@@ -17,12 +17,7 @@ The proposed system, **Hybrid ESD-JASSNet**, combines multi-scale convolutional 
 
 A digital stethoscope records heart sounds (HS) and lung sounds (LS) simultaneously as a single monaural signal. The two sources overlap substantially in time and frequency, especially in the approximate **20–500 Hz** region, making fixed spectral filtering insufficient.
 
-The task is to estimate two waveforms from one observed mixture:
-
-\[
-M(t) \longrightarrow \left(\hat{H}(t),\hat{L}(t)\right),
-\]
-
+The task is to estimate two waveforms from one observed mixture M= H + L
 where:
 
 - \(M(t)\) is the observed cardiopulmonary mixture;
@@ -288,28 +283,6 @@ These measurements demonstrate a broad statistical mismatch in the analysed feat
 
 ---
 
-## Repository organisation
-
-The recommended logical organisation is:
-
-```text
-.
-├── src/                    # models, losses, data utilities and evaluation code
-├── scripts/                # dataset audits, training, adaptation and inference entry points
-├── configs/                # final experiment configurations
-├── data/
-│   ├── README.md           # dataset acquisition and expected local paths
-│   └── manifests/          # source-disjoint splits and selected file identifiers
-├── results/                # compact CSV summaries and final figures
-├── tests/                  # unit and consistency tests
-├── requirements.txt        # Python dependencies
-├── .gitignore
-└── README.md
-```
-
-Update this tree if the final repository uses different folder names.
-
----
 
 ## Installation
 
@@ -338,44 +311,6 @@ The exact Python, PyTorch and CUDA versions used for the final experiments shoul
 
 ---
 
-## Reproducing the experimental pipeline
-
-The intended execution order is:
-
-1. acquire the original datasets from their official sources;
-2. create local dataset paths without committing raw audio;
-3. run dataset screening and HLS-CMDS coherence audits;
-4. generate the source-disjoint manifests;
-5. construct EXP_H controlled mixtures;
-6. train the Stage-1 EXP_H checkpoint;
-7. run the five target-domain scratch references;
-8. run Mixed fine-tuning with EXP_H replay;
-9. generate and filter V1 pseudo-labels;
-10. run Stage-3 SSL refinement;
-11. evaluate HLS-CMDS, EXP_H retention, robustness and external consistency;
-12. reproduce tables, figures and statistical analyses.
-
-Exact command examples should be added after the final script names and command-line arguments in this repository have been frozen. Avoid documenting guessed commands that do not match the implementation.
-
----
-
-## Data availability and licensing
-
-Raw datasets and clinical or biomedical audio are **not redistributed** in this repository. Users must obtain each dataset from its original provider and comply with its licence, access conditions and citation requirements.
-
-Do not commit:
-
-- raw WAV collections;
-- private or non-public clinical recordings;
-- API keys, credentials or environment files;
-- complete training caches;
-- large intermediate checkpoints;
-- third-party source code without a compatible redistribution licence.
-
-Small manifests, source identifiers, configuration files, checksums and derived aggregate metrics should be preferred when permitted.
-
----
-
 ## Limitations
 
 The main limitations are:
@@ -385,7 +320,6 @@ The main limitations are:
 - the coherent V2 subset is too small for independent training and validation;
 - the published JASSNet implementation and complete training pipeline are unavailable, so the internal variants are reconstructions rather than exact reproductions;
 - the M7 baseline is reconstructed from the methodological description and follows a separate signal-processing protocol;
-- teacher errors may propagate through accepted pseudo-labels;
 - downstream clinical endpoints such as heart-rate, respiratory-rate and diagnostic accuracy have not yet been validated.
 
 ---
@@ -402,20 +336,8 @@ This software is a research prototype. Separation quality measured through wavef
 
 ---
 
-## Citation
-
-When using this repository, cite the associated master's thesis and the original datasets and methods on which an experiment depends.
-
-A complete BibTeX entry and `CITATION.cff` file should be added after the thesis metadata, supervisor information, academic year and publication details are finalised.
-
----
 
 ## Acknowledgements
 
 This work builds on publicly available biomedical-sound research resources, including PhysioNet 2016, ICBHI 2017, HLS-CMDS, HF_Lung, JASSNet and the Montoro/Cañadas-Quesada NMF methodology. Refer to the thesis bibliography for the complete academic references.
 
----
-
-## Licence
-
-No repository licence is declared in this README. Add a `LICENSE` file only after deciding the redistribution terms for the original code and verifying compatibility with all included third-party components.
