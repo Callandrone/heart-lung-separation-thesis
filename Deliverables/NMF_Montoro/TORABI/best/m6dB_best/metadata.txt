@@ -1,0 +1,37 @@
+MONTORO / NMF RO-ONLY QUALITATIVE CASE
+======================================
+Dataset: Torabi Fold 2
+Configuration: Bentley/PASCAL dictionary, U_f=0.90, RO_ONLY
+Selection category: best
+Selection reason: highest mean SI-SDR within this SNR group
+Sample ID: eval_0340
+Input SNR: -6 dB
+
+Selection metrics from m7_metrics_per_file.csv
+----------------------------------------------
+Mean SI-SDR: 7.473237414068564
+HS SI-SDR: 4.568815528492617
+LS SI-SDR: 10.377659299644511
+HS NMSE: -4.7612102282573225
+LS NMSE: -10.754168519684034
+Mix correlation: 0.9999999709531212
+Mix NMSE: -72.36082382005664
+
+Metrics recomputed from the exact exported WAV files
+----------------------------------------------------
+hs_si_sdr_db: -6.0280159165980365
+ls_si_sdr_db: 5.9842242415455935
+mean_si_sdr_db: -0.021895837526221484
+hs_nmse_db: 5.993005976509775
+ls_nmse_db: -5.9930059827973325
+hs_pearson: 0.44690818329758986
+ls_pearson: 0.8936758376055831
+mix_corr: 1.0
+mix_nmse_db: 0.0
+
+Audio policy
+------------
+No peak normalization.
+No gain normalization or ground-truth rescaling.
+No clipping.
+Original input/reference/prediction WAV files copied unchanged.

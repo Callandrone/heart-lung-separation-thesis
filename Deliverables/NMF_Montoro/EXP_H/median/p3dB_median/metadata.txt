@@ -1,0 +1,37 @@
+MONTORO / NMF RO-ONLY QUALITATIVE CASE
+======================================
+Dataset: EXP_H PhysioNet-ICBHI
+Configuration: Bentley/PASCAL dictionary, U_f=0.90, RO_ONLY
+Selection category: median
+Selection reason: closest to median mean SI-SDR within this SNR group
+Sample ID: eval_0248
+Input SNR: +3 dB
+
+Selection metrics from m7_metrics_per_file.csv
+----------------------------------------------
+Mean SI-SDR: -10.346619000885465
+HS SI-SDR: 2.7618366301803667
+LS SI-SDR: -23.45507463195129
+HS NMSE: -3.0158193285301285
+LS NMSE: -0.015805739704221
+Mix correlation: 0.9999999605037744
+Mix NMSE: -71.03486065807341
+
+Metrics recomputed from the exact exported WAV files
+----------------------------------------------------
+hs_si_sdr_db: 150.20077314585245
+ls_si_sdr_db: 147.2007730376131
+mean_si_sdr_db: 148.70077309173277
+hs_nmse_db: -150.2007754478816
+ls_nmse_db: -147.2007754065547
+hs_pearson: 1.0
+ls_pearson: 1.0
+mix_corr: 0.9999999999999983
+mix_nmse_db: -144.80757923782738
+
+Audio policy
+------------
+No peak normalization.
+No gain normalization or ground-truth rescaling.
+No clipping.
+Original input/reference/prediction WAV files copied unchanged.
