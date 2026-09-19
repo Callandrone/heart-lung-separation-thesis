@@ -1,4 +1,4 @@
-# Cardiopulmonary Sound Source Separation
+# Single-Channel Heart–Lung Sound Separation Across Acoustic Domains: Deep Learning and Semi-Supervised Adaptation
 
 Multi-domain, single-channel separation of cardiopulmonary recordings into estimated **heart-sound** and **lung-sound** waveforms.
 
