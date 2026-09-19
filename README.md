@@ -1,15 +1,11 @@
 # Single-Channel Heart–Lung Sound Separation Across Acoustic Domains: Deep Learning and Semi-Supervised Adaptation
 
-Multi-domain, single-channel separation of cardiopulmonary recordings into estimated **heart-sound** and **lung-sound** waveforms.
-
-This repository contains the research code developed for the master's thesis **_Cardiopulmonary Sound Source Separation_** by **Pietro Callandrone**. The project investigates whether a compact time-domain neural separator can operate across two acoustically different domains:
+This repository contains the research code developed for the master's thesis **_Single-Channel Heart–Lung Sound Separation Across Acoustic Domains: Deep Learning and Semi-Supervised Adaptation_** by **Pietro Callandrone**. The project investigates whether a compact time-domain separator can operate across two acoustically different domains:
 
 - a controlled source domain built from real-patient heart and lung recordings;
 - a shifted target domain recorded from a clinical manikin.
 
-The proposed system, **Hybrid ESD-JASSNet**, combines multi-scale convolutional encoding, JASSNet-inspired local/global attention, replay-based target adaptation, and confidence-filtered semi-supervised learning.
-
-> **Research status:** this repository accompanies an academic thesis and is intended for research and reproducibility. It is not a medical device and must not be used for diagnosis or clinical decision-making.
+The proposed system, **ESD-JASSNet**, combines multi-scale convolutional encoding, JASSNet-inspired local/global attention, replay-based target adaptation and confidence-filtered semi-supervised learning.
 
 ---
 
@@ -17,7 +13,12 @@ The proposed system, **Hybrid ESD-JASSNet**, combines multi-scale convolutional 
 
 A digital stethoscope records heart sounds (HS) and lung sounds (LS) simultaneously as a single monaural signal. The two sources overlap substantially in time and frequency, especially in the approximate **20–500 Hz** region, making fixed spectral filtering insufficient.
 
-The task is to estimate two waveforms from one observed mixture M= H + L
+The task is to estimate two waveforms from one observed mixture,
+
+\[
+M(t) = H(t) + L(t),
+\]
+
 where:
 
 - \(M(t)\) is the observed cardiopulmonary mixture;
@@ -205,7 +206,7 @@ All final Hybrid configurations use:
 | Stage | Learning rate | Epochs | Patience | Replay weight | SSL weight |
 |---|---:|---:|---:|---:|---:|
 | EXP_H pre-training | 1e-4 | 30 | 5 | — | — |
-| Torabi scratch reference | 1e-4 | 30 | 5 | — | — |
+| HLS-CMDS scratch reference | 1e-4 | 30 | 5 | — | — |
 | Mixed fine-tuning | 1e-6 | 10 | 3 | 0.05 | — |
 | SSL refinement | 1e-6 | 10 | 3 | 0.05 | 0.10 |
 
