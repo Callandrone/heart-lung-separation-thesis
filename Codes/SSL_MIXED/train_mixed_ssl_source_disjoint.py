@@ -3069,7 +3069,7 @@ def _normalise_six_digit_base_id(value) -> str:
 
 def _default_v1_allowed_csv() -> str:
     return os.path.join(
-        getattr(cfg, "PROJECT_ROOT", "/nas/home/pcallandrone/DeepLearning"),
+        getattr(cfg, "PROJECT_ROOT", str(Path(__file__).resolve().parents[2])),
         "outputs",
         "v1_validation_similarity_audit",
         "v1_injection_allowed_base_ids_by_fold.csv",
@@ -3151,7 +3151,7 @@ def build_train_dataset_with_v1_injection(
         cfg,
         "V1_RESYNTH_DIR",
         os.path.join(
-            getattr(cfg, "PROJECT_ROOT", "/nas/home/pcallandrone/DeepLearning"),
+            getattr(cfg, "PROJECT_ROOT", str(Path(__file__).resolve().parents[2])),
             "dataset",
             "processed",
             "v1_resynth_300_hop05",
@@ -3292,7 +3292,7 @@ def run_finetune_from_scratch(
             cfg,
             "SOURCE_DISJOINT_SPLIT_CSV",
             os.path.join(
-                getattr(cfg, "PROJECT_ROOT", "/nas/home/pcallandrone/DeepLearning"),
+                getattr(cfg, "PROJECT_ROOT", str(Path(__file__).resolve().parents[2])),
                 "outputs",
                 "source_disjoint_splits_torabi.csv",
             ),
