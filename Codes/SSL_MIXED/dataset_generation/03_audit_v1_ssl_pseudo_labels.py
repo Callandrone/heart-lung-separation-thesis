@@ -1,0 +1,1010 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+03_audit_v1_ssl_pseudo_labels.py
+
+Audit conservativo delle pseudo-label SSL generate sulle V1 real mixtures M-only.
+
+Obiettivo metodologico:
+- NON usare mai H/L reali V1 come ground truth.
+- Usare solo M, H_pseudo, L_pseudo già generati dal teacher.
+- Verificare se H_pseudo/L_pseudo sono plausibili a livello acustico/spettrale.
+- Confrontare le pseudo-label confident con:
+    1) HLS-CMDS Fold 2 standalone/segment-level reference;
+    2) EXP_H / PhysioNet-ICBHI segment-level reference, se disponibile dal domain gap audit.
+- Esportare esempi best/median/worst per ascolto e plot.
+
+Output principali:
+- pseudo_segment_features.csv
+- combined_segment_features_for_pca.csv
+- distribution_summary.csv
+- pseudo_vs_reference_distance_summary.csv
+- pseudo_vs_reference_feature_gaps.csv
+- pseudo_mixture_level_audit.csv
+- examples_index.csv
+- summary.json / summary.txt
+- plot PCA e distribuzioni feature
+- cartella examples/ con wav copiati e png diagnostici
+
+Uso tipico:
+python 03_audit_v1_ssl_pseudo_labels.py --overwrite
+
+Se il domain gap audit non viene trovato automaticamente:
+python 03_audit_v1_ssl_pseudo_labels.py --domain-gap-dir /path/to/domain_gap_EXP_H_vs_HLSCMDS_FOLD2 --overwrite
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import os
+import shutil
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+
+import numpy as np
+
+# NumPy compatibility: some versions removed np.trapz.
+if not hasattr(np, "trapz") and hasattr(np, "trapezoid"):
+    np.trapz = np.trapezoid
+
+import pandas as pd
+from tqdm import tqdm
+
+try:
+    import soundfile as sf
+except Exception as exc:  # pragma: no cover
+    raise RuntimeError("Missing dependency: soundfile. Install with: pip install soundfile") from exc
+
+try:
+    from scipy import signal
+except Exception as exc:  # pragma: no cover
+    raise RuntimeError("Missing dependency: scipy. Install with: pip install scipy") from exc
+
+try:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+except Exception as exc:  # pragma: no cover
+    raise RuntimeError("Missing dependency: matplotlib. Install with: pip install matplotlib") from exc
+
+try:
+    from sklearn.decomposition import PCA
+    from sklearn.preprocessing import StandardScaler
+except Exception:
+    PCA = None
+    StandardScaler = None
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(REPO_ROOT))).expanduser().resolve()
+
+EPS = 1e-12
+DEFAULT_SR = 4000
+SCRIPT_VERSION = "release_v1"
+
+SELECTED_FEATURES = [
+    "rms_db",
+    "crest_factor",
+    "zcr",
+    "spectral_centroid",
+    "spectral_bandwidth",
+    "spectral_flatness",
+    "energy_20_50_ratio",
+    "energy_20_80_ratio",
+    "energy_20_500_ratio",
+    "energy_50_150_ratio",
+    "energy_50_1800_ratio",
+    "energy_80_150_ratio",
+    "energy_150_500_ratio",
+    "energy_200_500_ratio",
+    "energy_500_1000_ratio",
+    "energy_1000_1800_ratio",
+    "hs_band_20_80_ratio",
+    "hs_band_80_150_ratio",
+    "hs_band_150_500_ratio",
+    "lung_band_50_1800_ratio",
+    "ls_band_20_50_ratio",
+    "ls_band_50_150_ratio",
+    "ls_band_150_500_ratio",
+    "ls_band_500_1000_ratio",
+    "ls_band_1000_1800_ratio",
+    "hf_noise_ratio_1000_2000",
+]
+
+PLOT_FEATURES = [
+    "spectral_centroid",
+    "zcr",
+    "spectral_flatness",
+    "crest_factor",
+    "energy_150_500_ratio",
+    "energy_500_1000_ratio",
+    "ls_band_150_500_ratio",
+    "ls_band_500_1000_ratio",
+]
+
+
+@dataclass
+class Args:
+    pseudo_root: Path
+    out_dir: Path
+    domain_gap_dir: Optional[Path]
+    ref_features_csv: Optional[Path]
+    max_pseudo_segments: Optional[int]
+    max_reference_rows_per_group: int
+    examples_per_group: int
+    overwrite: bool
+    seed: int
+    no_pca: bool
+    no_plots: bool
+
+
+def parse_args() -> Args:
+    p = argparse.ArgumentParser(
+        description="Audit feature/acustico delle pseudo-label SSL V1 confident."
+    )
+    p.add_argument(
+        "--pseudo-root",
+        type=Path,
+        default=PROJECT_ROOT / "dataset" / "processed" / "v1_real_ssl_pseudo_from_mixed_noaug",
+        help="Root del dataset pseudo-label generato dallo step 2.",
+    )
+    p.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="Cartella output audit. Default: <pseudo-root>/audit_feature_ssl_pseudo",
+    )
+    p.add_argument(
+        "--domain-gap-dir",
+        type=Path,
+        default=None,
+        help="Directory containing segment_level_features_sampled.csv from the EXP_H vs HLS-CMDS domain-gap analysis.",
+    )
+    p.add_argument(
+        "--ref-features-csv",
+        type=Path,
+        default=None,
+        help="CSV riferimento segment-level features. Se valorizzato, prevale su --domain-gap-dir.",
+    )
+    p.add_argument(
+        "--max-pseudo-segments",
+        type=int,
+        default=None,
+        help="Limita i segmenti pseudo confident per debug. Default: tutti.",
+    )
+    p.add_argument(
+        "--max-reference-rows-per-group",
+        type=int,
+        default=12000,
+        help="Campionamento massimo per gruppo domain/source_type/mode dalle feature reference.",
+    )
+    p.add_argument(
+        "--examples-per-group",
+        type=int,
+        default=5,
+        help="Numero di esempi best/median/worst da esportare.",
+    )
+    p.add_argument("--overwrite", action="store_true", help="Sovrascrive output esistente.")
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--no-pca", action="store_true")
+    p.add_argument("--no-plots", action="store_true")
+    ns = p.parse_args()
+
+    out_dir = ns.out_dir or (ns.pseudo_root / "audit_feature_ssl_pseudo")
+    return Args(
+        pseudo_root=ns.pseudo_root,
+        out_dir=out_dir,
+        domain_gap_dir=ns.domain_gap_dir,
+        ref_features_csv=ns.ref_features_csv,
+        max_pseudo_segments=ns.max_pseudo_segments,
+        max_reference_rows_per_group=ns.max_reference_rows_per_group,
+        examples_per_group=ns.examples_per_group,
+        overwrite=ns.overwrite,
+        seed=ns.seed,
+        no_pca=ns.no_pca,
+        no_plots=ns.no_plots,
+    )
+
+
+def ensure_out_dir(path: Path, overwrite: bool) -> None:
+    if path.exists():
+        if not overwrite:
+            raise FileExistsError(f"Output dir already exists: {path}. Use --overwrite")
+        shutil.rmtree(path)
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "plots").mkdir(parents=True, exist_ok=True)
+    (path / "examples").mkdir(parents=True, exist_ok=True)
+
+
+def auto_find_ref_features(args: Args) -> Optional[Path]:
+    if args.ref_features_csv is not None:
+        return args.ref_features_csv if args.ref_features_csv.exists() else None
+
+    candidates: List[Path] = []
+    if args.domain_gap_dir is not None:
+        candidates.append(args.domain_gap_dir / "segment_level_features_sampled.csv")
+
+    candidates.extend([
+        Path.cwd() / "domain_gap_EXP_H_vs_TORABI_FOLD2" / "segment_level_features_sampled.csv",  # legacy output name
+        Path.cwd() / "segment_level_features_sampled.csv",
+        PROJECT_ROOT / "outputs" / "domain_gap_EXP_H_vs_TORABI_FOLD2" / "segment_level_features_sampled.csv",
+        PROJECT_ROOT / "domain_gap_EXP_H_vs_TORABI_FOLD2" / "segment_level_features_sampled.csv",
+        PROJECT_ROOT / "dataset" / "processed" / "domain_gap_EXP_H_vs_TORABI_FOLD2" / "segment_level_features_sampled.csv",
+    ])
+
+    for c in candidates:
+        if c.exists():
+            return c
+    return None
+
+
+def read_audio(path: Path, expected_sr: int = DEFAULT_SR) -> Tuple[np.ndarray, int]:
+    x, sr = sf.read(str(path), always_2d=False)
+    if x.ndim > 1:
+        x = np.mean(x, axis=1)
+    x = np.asarray(x, dtype=np.float32)
+    if not np.all(np.isfinite(x)):
+        x = np.nan_to_num(x)
+    if sr != expected_sr:
+        # Fallback robusto: resampling polifase per eventuali file reference non coerenti.
+        g = math.gcd(sr, expected_sr)
+        x = signal.resample_poly(x, expected_sr // g, sr // g).astype(np.float32)
+        sr = expected_sr
+    return x, sr
+
+
+def remove_dc(x: np.ndarray) -> np.ndarray:
+    return x - float(np.mean(x)) if x.size else x
+
+
+def rms(x: np.ndarray) -> float:
+    return float(np.sqrt(np.mean(np.square(x, dtype=np.float64)) + EPS))
+
+
+def db20(v: float) -> float:
+    return float(20.0 * np.log10(max(v, EPS)))
+
+
+def band_power(freqs: np.ndarray, psd: np.ndarray, lo: float, hi: float) -> float:
+    m = (freqs >= lo) & (freqs < hi)
+    if not np.any(m):
+        return 0.0
+    return float(np.trapz(psd[m], freqs[m]))
+
+
+def compute_features_for_signal(
+    x_in: np.ndarray,
+    sr: int,
+    *,
+    domain: str,
+    source_type: str,
+    mode: str,
+    item_id: str,
+    audio_path: str,
+    base_id: str,
+    segment_index: int,
+) -> Dict[str, object]:
+    x_raw = remove_dc(np.asarray(x_in, dtype=np.float32))
+    raw_r = rms(x_raw)
+    raw_peak = float(np.max(np.abs(x_raw)) + EPS)
+
+    if mode == "rms":
+        x = x_raw / max(raw_r, EPS)
+    else:
+        x = x_raw.copy()
+
+    r = rms(x)
+    peak = float(np.max(np.abs(x)) + EPS)
+    crest = float(peak / max(r, EPS))
+    zcr = float(np.mean(np.abs(np.diff(np.signbit(x))).astype(np.float32))) if x.size > 1 else 0.0
+
+    nperseg = min(1024, max(64, int(len(x))))
+    if nperseg < 64:
+        # Segnale anomalo troppo corto: pad minimo.
+        x = np.pad(x, (0, max(0, 64 - len(x))))
+        nperseg = 64
+    freqs, psd = signal.welch(x, fs=sr, nperseg=nperseg, noverlap=nperseg // 2, detrend=False)
+    psd = np.maximum(psd.astype(np.float64), EPS)
+    total_power = float(np.trapz(psd, freqs) + EPS)
+
+    centroid = float(np.sum(freqs * psd) / np.sum(psd))
+    bandwidth = float(np.sqrt(np.sum(((freqs - centroid) ** 2) * psd) / np.sum(psd)))
+    spectral_flatness = float(np.exp(np.mean(np.log(psd))) / (np.mean(psd) + EPS))
+
+    row: Dict[str, object] = {
+        "domain": domain,
+        "source_type": source_type,
+        "mode": mode,
+        "item_id": item_id,
+        "audio_path": audio_path,
+        "sr": sr,
+        "n_samples": int(len(x_in)),
+        "duration_s": float(len(x_in) / sr),
+        "raw_rms": raw_r,
+        "raw_rms_db": db20(raw_r),
+        "raw_peak_abs": raw_peak,
+        "rms": r,
+        "rms_db": db20(r),
+        "peak_abs": peak,
+        "crest_factor": crest,
+        "zcr": zcr,
+        "total_psd_power": total_power,
+        "total_psd_power_db": db20(math.sqrt(total_power)),
+        "spectral_centroid": centroid,
+        "spectral_bandwidth": bandwidth,
+        "spectral_flatness": spectral_flatness,
+        "base_id": base_id,
+        "segment_index": int(segment_index),
+    }
+
+    bands = [
+        (20, 50),
+        (20, 80),
+        (20, 500),
+        (50, 150),
+        (50, 1800),
+        (80, 150),
+        (150, 500),
+        (200, 500),
+        (500, 1000),
+        (1000, 1800),
+    ]
+    for lo, hi in bands:
+        bp = band_power(freqs, psd, lo, hi)
+        row[f"energy_{lo}_{hi}_power"] = bp
+        row[f"energy_{lo}_{hi}_db"] = db20(math.sqrt(bp + EPS))
+        row[f"energy_{lo}_{hi}_ratio"] = float(bp / total_power)
+
+    # Alias usati nel domain-gap audit precedente.
+    row["hs_band_20_80_ratio"] = row["energy_20_80_ratio"]
+    denom_hs = float(row["energy_20_500_power"] + EPS)
+    row["hs_band_80_150_ratio"] = float(row["energy_80_150_power"] / denom_hs)
+    row["hs_band_150_500_ratio"] = float(row["energy_150_500_power"] / denom_hs)
+    row["lung_band_50_1800_ratio"] = row["energy_50_1800_ratio"]
+    denom_ls = float(row["energy_50_1800_power"] + EPS)
+    row["ls_band_20_50_ratio"] = float(row["energy_20_50_power"] / denom_ls)
+    row["ls_band_50_150_ratio"] = float(row["energy_50_150_power"] / denom_ls)
+    row["ls_band_150_500_ratio"] = float(row["energy_150_500_power"] / denom_ls)
+    row["ls_band_500_1000_ratio"] = float(row["energy_500_1000_power"] / denom_ls)
+    row["ls_band_1000_1800_ratio"] = float(row["energy_1000_1800_power"] / denom_ls)
+    hf = band_power(freqs, psd, 1000, min(2000, sr / 2))
+    row["hf_noise_ratio_1000_2000"] = float(hf / total_power)
+    return row
+
+
+def load_confident_manifest(pseudo_root: Path, max_segments: Optional[int], seed: int) -> pd.DataFrame:
+    candidates = [
+        pseudo_root / "manifest_pseudo_confident.csv",
+        pseudo_root / "manifest_ssl_pseudo_confident.csv",
+        pseudo_root / "manifest_pseudo_all.csv",
+    ]
+    manifest_path = None
+    for c in candidates:
+        if c.exists():
+            manifest_path = c
+            break
+    if manifest_path is None:
+        raise FileNotFoundError(f"No pseudo manifest found under {pseudo_root}")
+
+    df = pd.read_csv(manifest_path)
+    if "confidence_pass" in df.columns:
+        # Se stiamo leggendo all, teniamo solo confident.
+        df = df[df["confidence_pass"].astype(str).str.lower().isin(["true", "1", "yes"])].copy()
+    if max_segments is not None and len(df) > max_segments:
+        df = df.sample(n=max_segments, random_state=seed).sort_values(["base_id", "segment_index"]).copy()
+    return df.reset_index(drop=True)
+
+
+def resolve_path_from_row(row: pd.Series, source_type: str, pseudo_root: Optional[Path] = None) -> Optional[Path]:
+    """Resolve an audio path from the pseudo-label manifest.
+
+    The step-2 manifest normally stores absolute paths such as:
+      <pseudo_root>/confident/H_M0001_s000_orig.wav
+
+    This resolver is intentionally defensive because, after moving folders or
+    copying only manifests, those absolute paths may become stale. It first
+    tries the path stored in the CSV, then reconstructs the expected path from
+    pseudo_root/name.
+    """
+    assert source_type in {"HS", "LS", "MIX"}
+    if source_type == "HS":
+        cols = ["confident_h_pseudo_path", "all_h_pseudo_path", "h_pseudo_path"]
+        prefix = "H_"
+    elif source_type == "LS":
+        cols = ["confident_l_pseudo_path", "all_l_pseudo_path", "l_pseudo_path"]
+        prefix = "L_"
+    else:
+        cols = ["confident_m_pseudo_path", "all_m_pseudo_path", "m_pseudo_path", "source_m_path"]
+        prefix = "M_"
+
+    candidates: List[Path] = []
+
+    for c in cols:
+        if c in row.index:
+            val = row[c]
+            if isinstance(val, str):
+                raw = val.strip()
+                if raw and raw.lower() not in {"nan", "none", "null"}:
+                    pp = Path(raw)
+                    candidates.append(pp)
+                    if pseudo_root is not None and not pp.is_absolute():
+                        candidates.append(pseudo_root / pp)
+
+    # Fallback by naming convention used by step 2.
+    if pseudo_root is not None:
+        name = str(row.get("name", "")).strip()
+        if name:
+            for folder in ["confident", "all", "rejected"]:
+                candidates.append(pseudo_root / folder / f"{prefix}{name}.wav")
+
+    # Last fallback for MIX only: source_m_path in M1_segmented_only.
+    if source_type == "MIX" and "source_m_path" in row.index and isinstance(row["source_m_path"], str):
+        candidates.append(Path(row["source_m_path"].strip()))
+
+    seen = set()
+    for pp in candidates:
+        key = str(pp)
+        if key in seen:
+            continue
+        seen.add(key)
+        if pp.exists():
+            return pp
+    return None
+
+
+def compute_pseudo_features(df: pd.DataFrame, out_dir: Path, pseudo_root: Path) -> pd.DataFrame:
+    rows: List[Dict[str, object]] = []
+    missing: List[Dict[str, object]] = []
+    for _, r in tqdm(df.iterrows(), total=len(df), desc="Computing pseudo-label features"):
+        name = str(r.get("name", f"{r.get('base_id','UNK')}_s{int(r.get('segment_index', -1)):03d}"))
+        base_id = str(r.get("base_id", ""))
+        seg_idx = int(r.get("segment_index", -1))
+        for st in ["HS", "LS"]:
+            path = resolve_path_from_row(r, st, pseudo_root)
+            if path is None:
+                missing.append({"name": name, "source_type": st, "reason": "missing_audio_path"})
+                continue
+            try:
+                x, sr = read_audio(path)
+                for mode in ["raw", "rms"]:
+                    row = compute_features_for_signal(
+                        x,
+                        sr,
+                        domain="PSEUDO_V1_SSL",
+                        source_type=st,
+                        mode=mode,
+                        item_id=name,
+                        audio_path=str(path),
+                        base_id=base_id,
+                        segment_index=seg_idx,
+                    )
+                    # Aggiungo metriche di confidenza dal manifest, utili per filtrare/rankare.
+                    for col in [
+                        "final_mix_corr",
+                        "final_mix_nmse_db",
+                        "gain_calibration_gamma",
+                        "pseudo_h_over_l_snr_db",
+                        "abs_pseudo_h_over_l_snr_db",
+                        "pseudo_h_l_corr",
+                        "abs_pseudo_h_l_corr",
+                        "confidence_reason",
+                    ]:
+                        if col in r.index:
+                            row[col] = r[col]
+                    rows.append(row)
+            except Exception as exc:
+                missing.append({"name": name, "source_type": st, "reason": repr(exc), "path": str(path)})
+    if missing:
+        pd.DataFrame(missing).to_csv(out_dir / "missing_or_failed_pseudo_audio.csv", index=False)
+    feat = pd.DataFrame(rows)
+    return feat
+
+
+def load_reference_features(ref_csv: Optional[Path], max_rows_per_group: int, seed: int) -> pd.DataFrame:
+    if ref_csv is None or not ref_csv.exists():
+        return pd.DataFrame()
+    ref = pd.read_csv(ref_csv)
+    required = {"domain", "source_type", "mode"}
+    if not required.issubset(set(ref.columns)):
+        raise ValueError(f"Reference CSV missing required columns {required}: {ref_csv}")
+    # Teniamo solo domini utili e sorgenti HS/LS.
+    ref = ref[ref["source_type"].isin(["HS", "LS"])].copy()
+    if "domain" in ref.columns:
+        ref = ref[ref["domain"].isin(["TORABI_FOLD2", "EXP_H", "PHYSIONET_ICBHI", "EXP_E", "EXP_H_FULL_BOTH"])].copy()
+    # Normalizzo eventuali alias.
+    ref["domain"] = ref["domain"].replace({"EXP_H_FULL_BOTH": "EXP_H", "PHYSIONET_ICBHI": "EXP_H"})
+    # Campionamento per velocità e PCA leggibile.
+    parts = []
+    for _, g in ref.groupby(["domain", "source_type", "mode"], dropna=False):
+        if len(g) > max_rows_per_group:
+            parts.append(g.sample(n=max_rows_per_group, random_state=seed))
+        else:
+            parts.append(g)
+    return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+
+
+def numeric_summary(df: pd.DataFrame, group_cols: Sequence[str], features: Sequence[str]) -> pd.DataFrame:
+    rows = []
+    features = [f for f in features if f in df.columns]
+    for keys, g in df.groupby(list(group_cols), dropna=False):
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+        base = {c: v for c, v in zip(group_cols, keys)}
+        base["n"] = int(len(g))
+        for f in features:
+            s = pd.to_numeric(g[f], errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+            if s.empty:
+                continue
+            row = dict(base)
+            row.update({
+                "feature": f,
+                "mean": float(s.mean()),
+                "std": float(s.std(ddof=0)),
+                "p05": float(s.quantile(0.05)),
+                "p25": float(s.quantile(0.25)),
+                "p50": float(s.quantile(0.50)),
+                "p75": float(s.quantile(0.75)),
+                "p95": float(s.quantile(0.95)),
+                "min": float(s.min()),
+                "max": float(s.max()),
+            })
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def compute_reference_distances(combined: pd.DataFrame, features: Sequence[str]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    features = [f for f in features if f in combined.columns]
+    rows_summary: List[Dict[str, object]] = []
+    rows_feature: List[Dict[str, object]] = []
+
+    for source_type in ["HS", "LS"]:
+        for mode in ["raw", "rms"]:
+            pseudo = combined[(combined["domain"] == "PSEUDO_V1_SSL") & (combined["source_type"] == source_type) & (combined["mode"] == mode)]
+            if pseudo.empty:
+                continue
+            pseudo_medians = {}
+            for f in features:
+                s = pd.to_numeric(pseudo[f], errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+                if len(s):
+                    pseudo_medians[f] = float(s.median())
+            for ref_domain in [d for d in sorted(combined["domain"].dropna().unique()) if d != "PSEUDO_V1_SSL"]:
+                ref = combined[(combined["domain"] == ref_domain) & (combined["source_type"] == source_type) & (combined["mode"] == mode)]
+                if ref.empty:
+                    continue
+                std_diffs = []
+                signed_rows = []
+                for f, pmed in pseudo_medians.items():
+                    rs = pd.to_numeric(ref[f], errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+                    if len(rs) < 5:
+                        continue
+                    rmed = float(rs.median())
+                    riqr = float(rs.quantile(0.75) - rs.quantile(0.25))
+                    scale = max(abs(riqr), EPS)
+                    diff = pmed - rmed
+                    z = diff / scale
+                    std_diffs.append(abs(z))
+                    signed_rows.append((f, pmed, rmed, diff, z))
+                if not std_diffs:
+                    continue
+                rows_summary.append({
+                    "source_type": source_type,
+                    "mode": mode,
+                    "reference_domain": ref_domain,
+                    "n_pseudo": int(len(pseudo)),
+                    "n_reference": int(len(ref)),
+                    "mean_abs_robust_z_gap": float(np.mean(std_diffs)),
+                    "median_abs_robust_z_gap": float(np.median(std_diffs)),
+                    "max_abs_robust_z_gap": float(np.max(std_diffs)),
+                    "n_features": int(len(std_diffs)),
+                })
+                for f, pmed, rmed, diff, z in signed_rows:
+                    rows_feature.append({
+                        "source_type": source_type,
+                        "mode": mode,
+                        "reference_domain": ref_domain,
+                        "feature": f,
+                        "pseudo_p50": pmed,
+                        "reference_p50": rmed,
+                        "delta_p50": diff,
+                        "robust_z_gap": z,
+                        "abs_robust_z_gap": abs(z),
+                    })
+    return pd.DataFrame(rows_summary), pd.DataFrame(rows_feature)
+
+
+def plot_feature_distributions(combined: pd.DataFrame, out_dir: Path, features: Sequence[str]) -> None:
+    plot_dir = out_dir / "plots" / "feature_distributions"
+    plot_dir.mkdir(parents=True, exist_ok=True)
+    features = [f for f in features if f in combined.columns]
+    for source_type in ["HS", "LS"]:
+        for mode in ["raw", "rms"]:
+            sub = combined[(combined["source_type"] == source_type) & (combined["mode"] == mode)].copy()
+            if sub.empty:
+                continue
+            domains = [d for d in ["TORABI_FOLD2", "EXP_H", "PSEUDO_V1_SSL"] if d in set(sub["domain"])]
+            if not domains:
+                domains = sorted(sub["domain"].dropna().unique())
+            for feat in features:
+                vals = []
+                labels = []
+                for d in domains:
+                    s = pd.to_numeric(sub[sub["domain"] == d][feat], errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+                    if len(s) > 0:
+                        # Campiono per leggibilità del boxplot.
+                        if len(s) > 3000:
+                            s = s.sample(n=3000, random_state=42)
+                        vals.append(s.values)
+                        labels.append(d)
+                if len(vals) < 2:
+                    continue
+                fig = plt.figure(figsize=(9, 5))
+                ax = fig.add_subplot(111)
+                ax.boxplot(vals, labels=labels, showfliers=False)
+                ax.set_title(f"{source_type} {mode} — {feat}")
+                ax.set_ylabel(feat)
+                ax.grid(True, alpha=0.25)
+                fig.tight_layout()
+                fig.savefig(plot_dir / f"box_{source_type}_{mode}_{feat}.png", dpi=140)
+                plt.close(fig)
+
+
+def plot_pca(combined: pd.DataFrame, out_dir: Path, features: Sequence[str], seed: int) -> None:
+    if PCA is None or StandardScaler is None:
+        print("[WARN] sklearn not available: PCA skipped")
+        return
+    plot_dir = out_dir / "plots" / "pca"
+    plot_dir.mkdir(parents=True, exist_ok=True)
+    features = [f for f in features if f in combined.columns]
+    if len(features) < 3:
+        print("[WARN] Too few features for PCA: skipped")
+        return
+
+    for source_type in ["HS", "LS"]:
+        for mode in ["raw", "rms"]:
+            sub = combined[(combined["source_type"] == source_type) & (combined["mode"] == mode)].copy()
+            if sub.empty or sub["domain"].nunique() < 2:
+                continue
+            # Campionamento bilanciato per dominio.
+            parts = []
+            for d, g in sub.groupby("domain"):
+                if len(g) > 4000:
+                    parts.append(g.sample(n=4000, random_state=seed))
+                else:
+                    parts.append(g)
+            sub = pd.concat(parts, ignore_index=True)
+            X = sub[features].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan)
+            valid = X.notna().all(axis=1)
+            X = X[valid]
+            sub = sub.loc[valid].copy()
+            if len(X) < 20 or sub["domain"].nunique() < 2:
+                continue
+            Xs = StandardScaler().fit_transform(X.values)
+            pca = PCA(n_components=2, random_state=seed)
+            Z = pca.fit_transform(Xs)
+            sub["PC1"] = Z[:, 0]
+            sub["PC2"] = Z[:, 1]
+            sub.to_csv(plot_dir / f"pca_{source_type}_{mode}.csv", index=False)
+
+            fig = plt.figure(figsize=(8, 6))
+            ax = fig.add_subplot(111)
+            for d in ["TORABI_FOLD2", "EXP_H", "PSEUDO_V1_SSL"]:
+                g = sub[sub["domain"] == d]
+                if g.empty:
+                    continue
+                ax.scatter(g["PC1"], g["PC2"], s=7, alpha=0.35, label=d)
+            ax.set_title(
+                f"PCA {source_type} {mode} — PC1 {pca.explained_variance_ratio_[0]*100:.1f}%, "
+                f"PC2 {pca.explained_variance_ratio_[1]*100:.1f}%"
+            )
+            ax.set_xlabel("PC1")
+            ax.set_ylabel("PC2")
+            ax.legend(markerscale=2)
+            ax.grid(True, alpha=0.25)
+            fig.tight_layout()
+            fig.savefig(plot_dir / f"pca_{source_type}_{mode}.png", dpi=160)
+            plt.close(fig)
+
+
+def quality_score(row: pd.Series) -> float:
+    corr = float(row.get("final_mix_corr", 0.0)) if pd.notna(row.get("final_mix_corr", np.nan)) else 0.0
+    nmse_db = float(row.get("final_mix_nmse_db", 0.0)) if pd.notna(row.get("final_mix_nmse_db", np.nan)) else 0.0
+    abs_snr = float(row.get("abs_pseudo_h_over_l_snr_db", 0.0)) if pd.notna(row.get("abs_pseudo_h_over_l_snr_db", np.nan)) else 0.0
+    abs_corr_hl = float(row.get("abs_pseudo_h_l_corr", abs(row.get("pseudo_h_l_corr", 0.0)))) if pd.notna(row.get("abs_pseudo_h_l_corr", np.nan)) else 0.0
+    gamma = float(row.get("gain_calibration_gamma", 1.0)) if pd.notna(row.get("gain_calibration_gamma", np.nan)) else 1.0
+    gamma_penalty = abs(math.log(max(gamma, EPS)))
+    # Più alto = più affidabile: alta corr, NMSE molto negativo, H/L non troppo uguali e non troppo sbilanciate.
+    return corr + ((-nmse_db) / 30.0) - 0.18 * abs_corr_hl - 0.025 * abs_snr - 0.06 * gamma_penalty
+
+
+def pick_examples(df: pd.DataFrame, n: int) -> pd.DataFrame:
+    if df.empty:
+        return df
+    tmp = df.copy()
+    tmp["audit_quality_score"] = tmp.apply(quality_score, axis=1)
+    tmp = tmp.sort_values("audit_quality_score", ascending=False).reset_index(drop=True)
+    best = tmp.head(n).copy()
+    best["example_group"] = "best"
+    worst = tmp.tail(n).iloc[::-1].copy()
+    worst["example_group"] = "worst"
+    # Median: prendo intorno al centro della classifica, evitando duplicati.
+    mid = len(tmp) // 2
+    lo = max(0, mid - n // 2)
+    hi = min(len(tmp), lo + n)
+    median = tmp.iloc[lo:hi].copy()
+    median["example_group"] = "median"
+    ex = pd.concat([best, median, worst], ignore_index=True)
+    ex = ex.drop_duplicates(subset=["name"], keep="first")
+    return ex
+
+
+def make_triplet_plot(m: np.ndarray, h: np.ndarray, l: np.ndarray, sr: int, out_png: Path, title: str) -> None:
+    t = np.arange(len(m)) / sr
+    fig = plt.figure(figsize=(12, 8))
+    axes = [fig.add_subplot(3, 2, 1), fig.add_subplot(3, 2, 3), fig.add_subplot(3, 2, 5),
+            fig.add_subplot(3, 2, 2), fig.add_subplot(3, 2, 4), fig.add_subplot(3, 2, 6)]
+    sigs = [("M", m), ("H_pseudo", h), ("L_pseudo", l)]
+    for i, (lab, x) in enumerate(sigs):
+        ax = axes[i * 2]
+        ax.plot(t, x, linewidth=0.8)
+        ax.set_title(f"{lab} waveform")
+        ax.set_xlim([0, t[-1] if len(t) else 2.0])
+        ax.grid(True, alpha=0.25)
+        ax = axes[i * 2 + 1]
+        nper = min(256, len(x))
+        if nper < 32:
+            nper = 32
+            x = np.pad(x, (0, max(0, nper - len(x))))
+        f, tt, Sxx = signal.spectrogram(x, fs=sr, nperseg=nper, noverlap=nper // 2)
+        Sdb = 10.0 * np.log10(Sxx + EPS)
+        ax.pcolormesh(tt, f, Sdb, shading="auto")
+        ax.set_ylim([0, 1200])
+        ax.set_title(f"{lab} spectrogram")
+        ax.set_ylabel("Hz")
+    fig.suptitle(title)
+    fig.tight_layout(rect=[0, 0.02, 1, 0.96])
+    fig.savefig(out_png, dpi=150)
+    plt.close(fig)
+
+
+def export_examples(df: pd.DataFrame, out_dir: Path, examples_per_group: int, pseudo_root: Path) -> pd.DataFrame:
+    ex = pick_examples(df, examples_per_group)
+    if ex.empty:
+        return ex
+    rows = []
+    for _, r in tqdm(ex.iterrows(), total=len(ex), desc="Exporting best/median/worst examples"):
+        group = str(r["example_group"])
+        name = str(r["name"])
+        dst_dir = out_dir / "examples" / group / name
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        paths = {
+            "M": resolve_path_from_row(r, "MIX", pseudo_root),
+            "H": resolve_path_from_row(r, "HS", pseudo_root),
+            "L": resolve_path_from_row(r, "LS", pseudo_root),
+        }
+        copied = {}
+        ok = True
+        for k, p in paths.items():
+            if p is None or not p.exists():
+                ok = False
+                copied[k] = ""
+                continue
+            dst = dst_dir / f"{k}_{name}.wav"
+            shutil.copy2(p, dst)
+            copied[k] = str(dst)
+        png_path = dst_dir / f"plot_{name}.png"
+        if ok:
+            try:
+                m, sr = read_audio(Path(copied["M"]))
+                h, _ = read_audio(Path(copied["H"]))
+                l, _ = read_audio(Path(copied["L"]))
+                n = min(len(m), len(h), len(l))
+                m, h, l = m[:n], h[:n], l[:n]
+                make_triplet_plot(
+                    m,
+                    h,
+                    l,
+                    sr,
+                    png_path,
+                    title=(
+                        f"{group.upper()} {name} | corr={float(r.get('final_mix_corr', np.nan)):.3f}, "
+                        f"nmse={float(r.get('final_mix_nmse_db', np.nan)):.2f} dB, "
+                        f"H/L={float(r.get('pseudo_h_over_l_snr_db', np.nan)):.2f} dB"
+                    ),
+                )
+            except Exception as exc:
+                print(f"[WARN] Could not plot {name}: {exc}")
+        row = {
+            "example_group": group,
+            "name": name,
+            "base_id": r.get("base_id", ""),
+            "segment_index": r.get("segment_index", ""),
+            "audit_quality_score": r.get("audit_quality_score", np.nan),
+            "final_mix_corr": r.get("final_mix_corr", np.nan),
+            "final_mix_nmse_db": r.get("final_mix_nmse_db", np.nan),
+            "gain_calibration_gamma": r.get("gain_calibration_gamma", np.nan),
+            "pseudo_h_over_l_snr_db": r.get("pseudo_h_over_l_snr_db", np.nan),
+            "pseudo_h_l_corr": r.get("pseudo_h_l_corr", np.nan),
+            "M_wav": copied.get("M", ""),
+            "H_pseudo_wav": copied.get("H", ""),
+            "L_pseudo_wav": copied.get("L", ""),
+            "plot_png": str(png_path) if png_path.exists() else "",
+        }
+        rows.append(row)
+    idx = pd.DataFrame(rows)
+    idx.to_csv(out_dir / "examples_index.csv", index=False)
+    return idx
+
+
+def write_text_summary(out_dir: Path, summary: Dict[str, object]) -> None:
+    with open(out_dir / "summary.json", "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2, ensure_ascii=False)
+
+    lines = []
+    lines.append("V1 SSL PSEUDO-LABEL FEATURE AUDIT")
+    lines.append("=" * 80)
+    lines.append(f"Pseudo root: {summary.get('pseudo_root')}")
+    lines.append(f"Output dir: {summary.get('out_dir')}")
+    lines.append(f"Reference features CSV: {summary.get('reference_features_csv')}")
+    lines.append("")
+    lines.append("Counts")
+    lines.append("------")
+    for k in ["n_manifest_confident", "n_pseudo_feature_rows", "n_reference_rows", "n_combined_rows"]:
+        lines.append(f"{k}: {summary.get(k)}")
+    lines.append("")
+    lines.append("Reference distance reading")
+    lines.append("--------------------------")
+    lines.append("Lower mean_abs_robust_z_gap = pseudo-label distribution closer to that reference domain.")
+    for item in summary.get("distance_winner_by_source_mode", []):
+        lines.append(
+            f"{item['source_type']} {item['mode']}: closest={item['closest_reference_domain']} "
+            f"distance={item['closest_mean_abs_robust_z_gap']:.3f}"
+        )
+    lines.append("")
+    lines.append("Important outputs")
+    lines.append("-----------------")
+    for rel in [
+        "pseudo_segment_features.csv",
+        "combined_segment_features_for_pca.csv",
+        "distribution_summary.csv",
+        "pseudo_vs_reference_distance_summary.csv",
+        "pseudo_vs_reference_feature_gaps.csv",
+        "pseudo_mixture_level_audit.csv",
+        "examples_index.csv",
+        "plots/",
+        "examples/",
+    ]:
+        lines.append(str(out_dir / rel))
+    lines.append("")
+    lines.append("Methodological note")
+    lines.append("-------------------")
+    lines.append("This audit does not use real V1 H/L as supervised ground truth. It compares teacher-generated H/L pseudo-labels against external/reference acoustic distributions and input-only confidence metrics.")
+    with open(out_dir / "summary.txt", "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+
+def main() -> None:
+    args = parse_args()
+    np.random.seed(args.seed)
+    ensure_out_dir(args.out_dir, args.overwrite)
+
+    print("=" * 88)
+    print("V1 SSL PSEUDO-LABEL FEATURE AUDIT")
+    print(f"Script version: {SCRIPT_VERSION}")
+    print("=" * 88)
+    print(f"Pseudo root: {args.pseudo_root}")
+    print(f"Out dir:     {args.out_dir}")
+
+    manifest = load_confident_manifest(args.pseudo_root, args.max_pseudo_segments, args.seed)
+    print(f"Confident manifest rows: {len(manifest)}")
+    manifest.to_csv(args.out_dir / "manifest_confident_used_for_audit.csv", index=False)
+
+    pseudo_feat = compute_pseudo_features(manifest, args.out_dir, args.pseudo_root)
+    pseudo_feat.to_csv(args.out_dir / "pseudo_segment_features.csv", index=False)
+    print(f"Pseudo feature rows: {len(pseudo_feat)}")
+    if pseudo_feat.empty:
+        missing_csv = args.out_dir / "missing_or_failed_pseudo_audio.csv"
+        hint = (
+            "No pseudo-label audio files could be read. This usually means the manifest paths point to files that do not exist, "
+            "or the step-2 audio folders all/ and confident/ are missing. Check: "
+            f"{args.pseudo_root}/confident/H_<name>.wav and {args.pseudo_root}/confident/L_<name>.wav. "
+            f"Details, if available: {missing_csv}"
+        )
+        raise RuntimeError(hint)
+
+    # Mixture-level audit: quanti segmenti confident e statistiche medie per registrazione Mxxxx.
+    agg_cols = [
+        "final_mix_corr",
+        "final_mix_nmse_db",
+        "gain_calibration_gamma",
+        "pseudo_h_over_l_snr_db",
+        "abs_pseudo_h_over_l_snr_db",
+        "pseudo_h_l_corr",
+        "abs_pseudo_h_l_corr",
+    ]
+    available_agg = [c for c in agg_cols if c in manifest.columns]
+    mix_audit = manifest.groupby("base_id", dropna=False).agg(
+        n_confident_segments=("name", "count"),
+        **{f"{c}_mean": (c, "mean") for c in available_agg},
+        **{f"{c}_p50": (c, "median") for c in available_agg},
+    ).reset_index()
+    mix_audit.to_csv(args.out_dir / "pseudo_mixture_level_audit.csv", index=False)
+
+    ref_csv = auto_find_ref_features(args)
+    if ref_csv is None:
+        print("[WARN] Reference segment_level_features_sampled.csv not found. Comparison vs HLS-CMDS/EXP_H skipped.")
+        ref_feat = pd.DataFrame()
+    else:
+        print(f"Reference features CSV: {ref_csv}")
+        ref_feat = load_reference_features(ref_csv, args.max_reference_rows_per_group, args.seed)
+        ref_feat.to_csv(args.out_dir / "reference_segment_features_used.csv", index=False)
+        print(f"Reference rows used: {len(ref_feat)}")
+
+    combined = pd.concat([ref_feat, pseudo_feat], ignore_index=True, sort=False) if not ref_feat.empty else pseudo_feat.copy()
+    combined.to_csv(args.out_dir / "combined_segment_features_for_pca.csv", index=False)
+
+    distribution = numeric_summary(combined, ["domain", "source_type", "mode"], SELECTED_FEATURES)
+    distribution.to_csv(args.out_dir / "distribution_summary.csv", index=False)
+
+    if not ref_feat.empty:
+        dist_summary, feature_gaps = compute_reference_distances(combined, SELECTED_FEATURES)
+        dist_summary.to_csv(args.out_dir / "pseudo_vs_reference_distance_summary.csv", index=False)
+        if not feature_gaps.empty and "abs_robust_z_gap" in feature_gaps.columns:
+            feature_gaps.sort_values("abs_robust_z_gap", ascending=False).to_csv(
+                args.out_dir / "pseudo_vs_reference_feature_gaps.csv", index=False
+            )
+        else:
+            feature_gaps.to_csv(args.out_dir / "pseudo_vs_reference_feature_gaps.csv", index=False)
+    else:
+        dist_summary = pd.DataFrame()
+        feature_gaps = pd.DataFrame()
+        pd.DataFrame().to_csv(args.out_dir / "pseudo_vs_reference_distance_summary.csv", index=False)
+        pd.DataFrame().to_csv(args.out_dir / "pseudo_vs_reference_feature_gaps.csv", index=False)
+
+    examples_index = export_examples(manifest, args.out_dir, args.examples_per_group, args.pseudo_root)
+
+    if not args.no_plots:
+        plot_feature_distributions(combined, args.out_dir, PLOT_FEATURES)
+    if not args.no_pca:
+        plot_pca(combined, args.out_dir, SELECTED_FEATURES, args.seed)
+
+    winners = []
+    if not dist_summary.empty:
+        for (st, mode), g in dist_summary.groupby(["source_type", "mode"]):
+            gg = g.sort_values("mean_abs_robust_z_gap", ascending=True)
+            top = gg.iloc[0]
+            winners.append({
+                "source_type": st,
+                "mode": mode,
+                "closest_reference_domain": str(top["reference_domain"]),
+                "closest_mean_abs_robust_z_gap": float(top["mean_abs_robust_z_gap"]),
+            })
+
+    summary = {
+        "pseudo_root": str(args.pseudo_root),
+        "out_dir": str(args.out_dir),
+        "reference_features_csv": str(ref_csv) if ref_csv is not None else None,
+        "n_manifest_confident": int(len(manifest)),
+        "n_pseudo_feature_rows": int(len(pseudo_feat)),
+        "n_reference_rows": int(len(ref_feat)) if not ref_feat.empty else 0,
+        "n_combined_rows": int(len(combined)),
+        "n_unique_pseudo_mixtures": int(manifest["base_id"].nunique()) if "base_id" in manifest.columns else None,
+        "n_examples_exported": int(len(examples_index)),
+        "distance_winner_by_source_mode": winners,
+        "does_use_real_v1_h_l_ground_truth": False,
+        "methodological_role": "Audit pseudo-label plausibility before conservative SSL training.",
+    }
+    write_text_summary(args.out_dir, summary)
+
+    print("\n" + "=" * 88)
+    print("AUDIT COMPLETED")
+    print("=" * 88)
+    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    print(f"\nAudit outputs written to:\n{args.out_dir}")
+
+
+if __name__ == "__main__":
+    main()

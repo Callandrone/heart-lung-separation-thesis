@@ -2680,9 +2680,16 @@ class Config:
     save_audio = False
     save_selected_audio_only = False
 
-    selected_cases_csv = (
-        "/nas/home/pcallandrone/DeepLearning/outputs/results/"
-        "eval_synth_1000_medium/failure_analysis/cases_to_listen_top30.csv"
+    selected_cases_csv = os.environ.get(
+        "ESD_JASSNET_SELECTED_CASES_CSV",
+        os.path.join(
+            str(getattr(cfg, "PROJECT_ROOT", Path(__file__).resolve().parents[2])),
+            "outputs",
+            "results",
+            "eval_synth_1000_medium",
+            "failure_analysis",
+            "cases_to_listen_top30.csv",
+        ),
     )
 
     save_audio_references = False #if true it saves also mixture and target reference
