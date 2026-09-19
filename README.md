@@ -1,6 +1,6 @@
 # Single-Channel Heart–Lung Sound Separation Across Acoustic Domains: Deep Learning and Semi-Supervised Adaptation
 
-This repository contains the research code developed for the master's thesis **_Single-Channel Heart–Lung Sound Separation Across Acoustic Domains: Deep Learning and Semi-Supervised Adaptation_** by **Pietro Callandrone**. The project investigates whether a compact time-domain separator can operate across two acoustically different domains:
+This repository contains the research code developed for the master's thesis **_Single-Channel Heart–Lung Sound Separation Across Acoustic Domains: Deep Learning and Semi-Supervised Adaptation_** by Pietro Callandrone. The project investigates whether a compact time-domain separator can operate across two acoustically different domains:
 
 - a controlled source domain built from real-patient heart and lung recordings;
 - a shifted target domain recorded from a clinical manikin.
@@ -11,21 +11,19 @@ The proposed system, **ESD-JASSNet**, combines multi-scale convolutional encodin
 
 ## Research problem
 
-A digital stethoscope records heart sounds (HS) and lung sounds (LS) simultaneously as a single monaural signal. The two sources overlap substantially in time and frequency, especially in the approximate **20–500 Hz** region, making fixed spectral filtering insufficient.
+A digital stethoscope records heart sounds (HS) and lung sounds (LS) simultaneously as a single monaural signal. The two sources overlap substantially in time and frequency, especially in the approximate 20–500 Hz region, making fixed spectral filtering insufficient.
+Given an observed cardiopulmonary mixture
 
-The task is to estimate two waveforms from one observed mixture,
-
-\[
+$$
 M(t) = H(t) + L(t),
-\]
+$$
 
-where:
+the separation task consists in estimating the two underlying source waveforms:
 
-- \(M(t)\) is the observed cardiopulmonary mixture;
-- \(\hat{H}(t)\) is the estimated heart-sound waveform;
-- \(\hat{L}(t)\) is the estimated lung-sound waveform.
+- $\hat{H}(t)$: estimated heart-sound waveform;
+- $\hat{L}(t)$: estimated lung-sound waveform.
 
-The thesis focuses not only on in-domain separation, but also on **domain shift**, **target-domain adaptation**, **catastrophic-forgetting control**, and the use of **unlabelled physical mixtures** through pseudo-labelling.
+The thesis focuses not only on in-domain separation, but also on domain shift, target-domain adaptation, catastrophic-forgetting control, and the use of unlabelled physical mixtures through pseudo-labelling.
 
 ---
 
@@ -39,7 +37,7 @@ The project includes:
 2. **EXP_H benchmark construction**  
    A controlled, exactly additive and source-disjoint benchmark built from quality-screened PhysioNet 2016 heart sounds and ICBHI 2017 lung sounds.
 
-3. **Hybrid ESD-JASSNet**  
+3. **ESD-JASSNet**  
    A compact time-domain separator with approximately **300k trainable parameters**.
 
 4. **Controlled and capacity-matched comparisons**  
@@ -58,57 +56,20 @@ The project includes:
 
 ## Proposed architecture
 
-Hybrid ESD-JASSNet is an end-to-end waveform separator operating on **2-second, 4 kHz** mono segments.
+ESD-JASSNet is a compact end-to-end waveform separator operating on 2-second, 4 kHz mono segments with 300,608 trainable parameters.
 
-```text
-Input mixture
-[B, 1, 8000]
-      │
-      ▼
-Learnable Conv1d encoder
-128 filters, kernel 16, stride 8, GELU
-      │
-      ▼
-Three Multi-Scale Depthwise Convolution blocks
-kernel 3, dilations 1 / 4 / 8, residual connections
-      │
-      ▼
-64-channel latent bottleneck
-[B, 64, 1000]
-      │
-      ▼
-Four JASSNet-inspired SeparationModules
-- sinusoidal positional encoding
-- chunked local ReLU² attention
-- linearised global attention
-- attentive gating
-      │
-      ▼
-Two unbounded ReLU latent masks
-      │
-      ▼
-Shared decoder with depthwise refinement
-and ConvTranspose1d reconstruction
-      │
-      ├──────────────► estimated heart sound
-      └──────────────► estimated lung sound
-```
+<p align="center">
+  <img src="Assets/esd-jassnet_forward.png"
+       alt="ESD-JASSNet forward-pass architecture"
+       width="600">
+</p>
 
-### Architectural characteristics
+<p align="center">
+  <em>Forward-pass architecture of the proposed ESD-JASSNet separator.</em>
+</p>
 
-| Component | Final configuration |
-|---|---:|
-| Input | 2 s, mono, 4 kHz, 8000 samples |
-| Encoder filters | 128 |
-| Encoder kernel / stride | 16 / 8 |
-| Multi-scale dilations | 1, 4, 8 |
-| Latent channels | 64 |
-| Separation modules | 4 |
-| Local-attention chunk | 50 frames, approximately 100 ms |
-| Mask activation | ReLU, unbounded |
-| Trainable parameters | 300,608 |
-
-The system also applies deterministic mixture-informed waveform calibration at inference time to resolve global polarity and gain ambiguities using only the observed mixture and the sum of the estimated sources.
+The architecture combines a multi-scale convolutional encoder, four JASSNet-inspired local/global separation modules, two latent source masks and a shared decoder applied to the heart- and lung-sound representations.
+At inference time, deterministic mixture-informed waveform calibration is additionally applied to resolve global polarity and gain ambiguities using only the observed mixture and the sum of the estimated sources.
 
 ---
 
@@ -132,9 +93,9 @@ The EXP_H checkpoint is adapted to controlled HLS-CMDS target-domain mixtures co
 
 A progressive curriculum increases the target-batch probability:
 
-\[
-p_{\mathrm{target}}: 0.30 \rightarrow 0.50 \rightarrow 0.70.
-\]
+$$
+p_{\mathrm{target}}: 0.30 \rightarrow 0.50 \rightarrow 0.70
+$$
 
 Low-weight EXP_H replay is retained during adaptation to reduce source-domain forgetting.
 
@@ -142,14 +103,14 @@ Low-weight EXP_H replay is retained during adaptation to reduce source-domain fo
 
 The frozen Stage-2 teacher generates pseudo-labels for unlabelled HLS-CMDS V1 physical mixtures. A segment is accepted only when it satisfies consistency and non-degeneracy constraints, including:
 
-- reconstructed-mixture correlation \(\geq 0.95\);
-- reconstructed-mixture NMSE \(\leq -10\) dB;
+- reconstructed-mixture correlation $\geq 0.95$;
+- reconstructed-mixture NMSE $\leq -10$ dB;
 - bounded inter-output correlation;
 - bounded pseudo-source energy ratio;
 - non-silent outputs;
 - admissible mixture-informed gain.
 
-For the final Hybrid teacher, **2,740 of 2,970 segments** pass the filter, corresponding to a **92.3% acceptance rate**.
+For the final teacher, 2,740 of 2,970 segments pass the filter, corresponding to a 92.3% acceptance rate.
 
 ---
 
@@ -183,10 +144,10 @@ EXP_H uses one fixed source-disjoint validation split. Its five retention values
 Unless otherwise specified by a baseline-specific protocol, waveforms are:
 
 1. converted to mono;
-2. resampled to **4 kHz**;
+2. resampled to 4 kHz;
 3. DC-centred;
-4. divided into **2-second windows**;
-5. segmented with a **0.5-second hop**, corresponding to 75% overlap.
+4. divided into 2-second windows;
+5. segmented with a 0.5-second hop, corresponding to 75% overlap.
 
 Controlled mixtures preserve additivity by applying source scaling followed by one shared triplet gain.
 
@@ -196,12 +157,12 @@ The Montoro M7 NMF baseline uses a separate 8 kHz, 7-second, STFT-based processi
 
 ## Training configuration
 
-All final Hybrid configurations use:
+All final configurations use:
 
 - Adam optimiser;
-- batch size: **64**;
-- weight decay: **1e-5**;
-- gradient clipping: **5.0**.
+- batch size: 64;
+- weight decay: 1e-5;
+- gradient clipping: 5.0.
 
 | Stage | Learning rate | Epochs | Patience | Replay weight | SSL weight |
 |---|---:|---:|---:|---:|---:|
@@ -210,27 +171,20 @@ All final Hybrid configurations use:
 | Mixed fine-tuning | 1e-6 | 10 | 3 | 0.05 | — |
 | SSL refinement | 1e-6 | 10 | 3 | 0.05 | 0.10 |
 
-The supervised Hybrid objective combines scale-invariant separation quality with absolute-amplitude and polarity constraints. During Stage 3, pseudo-labelled batches additionally use a low-weight mixture-consistency term.
+The supervised objective combines scale-invariant separation quality with absolute-amplitude and polarity constraints. During Stage 3, pseudo-labelled batches additionally use a low-weight mixture-consistency term.
 
 ---
 
 ## Main results
 
-### Hybrid adaptation pipeline
-
 Five-fold target-domain means are reported for HLS-CMDS. EXP_H retention is evaluated on one fixed source-disjoint validation set.
 
 | Model stage | HLS-CMDS HS SI-SDR | HLS-CMDS LS SI-SDR | EXP_H HS SI-SDR | EXP_H LS SI-SDR |
 |---|---:|---:|---:|---:|
-| EXP_H checkpoint, zero-shot on HLS-CMDS | -1.98 dB | -0.20 dB | +8.33 dB | +7.66 dB |
+| EXP_H checkpoint, cross-domain transfer on HLS-CMDS | -1.98 dB | -0.20 dB | +8.33 dB | +7.66 dB |
 | HLS-CMDS target-only scratch reference | +3.05 dB | +2.57 dB | — | — |
 | Mixed fine-tuning | +3.48 dB | +2.69 dB | +8.02 dB | +7.37 dB |
 | Final SSL refinement | **+3.78 dB** | **+2.96 dB** | **+7.99 dB** | **+7.32 dB** |
-
-The final SSL stage improves the five-fold mean over Mixed fine-tuning by:
-
-- **+0.30 dB** for heart sounds;
-- **+0.27 dB** for lung sounds.
 
 ### EXP_H supervised performance
 
@@ -243,11 +197,11 @@ The final SSL stage improves the five-fold mean over Mixed fine-tuning by:
 
 | Model | Parameters | HLS-CMDS HS | HLS-CMDS LS | Mean SI-SDR | Mixture correlation | EXP_H retention HS / LS |
 |---|---:|---:|---:|---:|---:|---:|
-| **Hybrid ESD-JASSNet** | 300,608 | **+3.78** | **+2.96** | **+3.37** | **0.987** | **+7.99 / +7.32** |
+| **ESD-JASSNet** | 300,608 | **+3.78** | **+2.96** | **+3.37** | **0.987** | **+7.99 / +7.32** |
 | JASSNet deeper | 300,480 | +3.67 | +2.69 | +3.18 | 0.511 | +7.14 / +6.78 |
 | JASSNet wider | 295,872 | +3.61 | +2.68 | +3.15 | 0.498 | +6.85 / +6.45 |
 
-Because the reconstructed JASSNet-like models do not use an identical training objective or inference procedure, these experiments should not be interpreted as a strict architecture-only causal ablation. They do show that parameter count alone is insufficient to reproduce the complete Hybrid pipeline result.
+Because the reconstructed JASSNet-like models do not use an identical training objective or inference procedure, these experiments should not be interpreted as a strict architecture-only causal ablation. They do show that parameter count alone is insufficient to reproduce the complete pipeline result.
 
 ---
 
@@ -275,7 +229,7 @@ Overlapping windows derived from the same full recording are not treated as stat
 The source-target acoustic comparison uses 39 RMS-normalised features. The reported analysis finds:
 
 - mean absolute standardised mean difference: **0.895**;
-- 35 of 39 feature confidence intervals excluding zero;
+- 35 of 39 SMD confidence intervals excluding zero;
 - linear domain-classifier ROC-AUC: **1.000** before first-order matching;
 - ROC-AUC: **0.500** after fold-wise mean and standard-deviation matching;
 - CORAL covariance distance: **1.995**, reduced to **0.355** after matching.
@@ -283,62 +237,55 @@ The source-target acoustic comparison uses 39 RMS-normalised features. The repor
 These measurements demonstrate a broad statistical mismatch in the analysed feature space. They do not, by themselves, identify a unique physical cause for the domain shift.
 
 ---
+## Repository structure
 
+```text
+Assets/
+└── esd-jassnet_forward.png          Architecture figure
 
+Codes/
+├── SSL_MIXED/                       Final semi-supervised ESD-JASSNet pipeline
+├── MIXED_TUNING/                    Supervised mixed-domain adaptation with source replay
+├── JASSNET - RECONSTRUCTION/        Reconstructed JASSNet-like comparison models
+├── DOMAIN_GAP/                      Acoustic domain-gap analyses
+├── ERROR_ANALYSIS/                  Error analysis and statistical evaluation
+└── BUILD_HFLUNG_RESPIRATORYTR/      External-dataset preparation and audit scripts
+
+Deliverables/
+├── DeepLearning_Model/              Representative deep-learning outputs
+└── NMF_Montoro/                     Representative reconstructed NMF outputs
+
+HLS_CMDS_ALIGNED/
+├── HS/                              Standalone heart-sound recordings
+├── LS/                              Standalone lung-sound recordings
+└── Mix/                             Physical cardiopulmonary mixtures
+```
+
+The scripts under `Codes/` preserve the experimental implementations used throughout the thesis. `Codes/SSL_MIXED/` contains the final proposed semi-supervised pipeline, while the remaining directories document intermediate training stages, comparison systems and analyses.
+
+---
 ## Installation
 
 Clone the repository and create an isolated Python environment:
 
 ```bash
-git clone https://github.com/Callandrone/hearth-lung-separation-thesis.git
-cd hearth-lung-separation-thesis
+git clone https://github.com/Callandrone/heart-lung-separation-thesis.git
+cd heart-lung-separation-thesis
 
 python -m venv .venv
 ```
 
-Activate it on Windows PowerShell:
+Activate the environment on Windows PowerShell:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-Install the dependencies once the final dependency file is available:
+### Path configuration
 
-```bash
-pip install -r requirements.txt
-```
+The experimental scripts were originally executed on a research server and some configuration files therefore retain the absolute paths of the original experimental environment.
 
-The exact Python, PyTorch and CUDA versions used for the final experiments should be recorded in `requirements.txt`, `environment.yml`, or `pyproject.toml` before release.
+Before running an experiment on another machine, update `PROJECT_ROOT` and the relevant dataset, checkpoint and output paths in the corresponding `model_config.py`.
 
----
-
-## Limitations
-
-The main limitations are:
-
-- limited target-domain source diversity;
-- all HLS-CMDS recordings originate from one manikin and recording chain;
-- the coherent V2 subset is too small for independent training and validation;
-- the published JASSNet implementation and complete training pipeline are unavailable, so the internal variants are reconstructions rather than exact reproductions;
-- the M7 baseline is reconstructed from the methodological description and follows a separate signal-processing protocol;
-- downstream clinical endpoints such as heart-rate, respiratory-rate and diagnostic accuracy have not yet been validated.
-
----
-
-## Clinical-use disclaimer
-
-This software is a research prototype. Separation quality measured through waveform metrics does not establish diagnostic accuracy. Clinical deployment would require, at minimum:
-
-- prospective validation on real patients;
-- cross-device and cross-site testing;
-- evaluation of downstream heart-rate and respiratory-rate estimation;
-- latency, memory and compute optimisation;
-- regulatory, privacy and safety assessment.
-
----
-
-
-## Acknowledgements
-
-This work builds on publicly available biomedical-sound research resources, including PhysioNet 2016, ICBHI 2017, HLS-CMDS, HF_Lung, JASSNet and the Montoro/Cañadas-Quesada NMF methodology. Refer to the thesis bibliography for the complete academic references.
+These paths are retained to document the original experimental setup and do not need to match the local repository location.
 
