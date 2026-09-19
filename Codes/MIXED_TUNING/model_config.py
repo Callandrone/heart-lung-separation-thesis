@@ -1,9 +1,20 @@
-# ============================================================
-# TORABI MIXED FINE-TUNING CONFIG — CURRENT DOMAIN SMALL
-# ============================================================
+"""Stage-2 mixed-domain adaptation configuration for ESD-JASSNet.
+
+The architecture and optimisation settings match the final mixed fine-tuning
+configuration reported in the thesis. Machine-specific paths can be overridden
+through environment variables without editing this file.
+"""
+
+import os
+from pathlib import Path
+
+# -----------------------------------------------------------------------------
+# Architecture
+# -----------------------------------------------------------------------------
 SR = 4000
 SEG_SECONDS = 2.0
 SEG_SAMPLES = int(SR * SEG_SECONDS)
+
 KERNEL_SIZE = 16
 STRIDE = 8
 N_FILTERS = 128
@@ -14,6 +25,8 @@ ENCODER_R = 3
 DECODER_R = 2
 DECODER_USE_INPUT_GLN = True
 N_SOURCES = 2
+
+# JASSNet-inspired separator
 JASSNET_DIM = N_LATENT
 JASSNET_NUM_MODULES = 4
 JASSNET_EXPANSION = 2
@@ -22,6 +35,7 @@ JASSNET_LOCAL_CHUNK = 50
 JASSNET_CONV_KERNEL = 3
 JASSNET_RPE_KERNEL = 3
 JASSNET_POSITIONAL_ENCODING = True
+
 SEP_N_STACKS = 1
 SEP_BLOCKS_PER_STACK = JASSNET_NUM_MODULES
 SEP_TCN_BOTTLENECK = 64
@@ -29,58 +43,117 @@ ATTN_HEADS = 1
 ATTN_WINDOW = JASSNET_LOCAL_CHUNK
 N_GLOBAL_TOKENS = 0
 MASK_SCALE = "ReLU_unbounded"
-PROJECT_ROOT = "/nas/home/pcallandrone/DeepLearning"
 
+# -----------------------------------------------------------------------------
+# Paths
+# -----------------------------------------------------------------------------
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(REPO_ROOT))).resolve()
 
+HLSCMDS_FOLD = int(os.environ.get("HLSCMDS_FOLD", "1"))
+if HLSCMDS_FOLD not in {1, 2, 3, 4, 5}:
+    raise ValueError(
+        f"HLSCMDS_FOLD must be one of 1, 2, 3, 4, 5; got {HLSCMDS_FOLD}."
+    )
 
-
-EXPERIMENT_NAME = "VALIDATION ON TORABI- EXP_H_FULL_TO_TORABI_FOLD1_MIXED_noaug"
-
-SUPERVISED_DIR = PROJECT_ROOT + "/dataset/processed/torabi_full_40x40_10x10_no_unused_fold1"
-SYNTH_SUPERVISED_DIR = SUPERVISED_DIR
-
-PRETRAIN_CKPT = PROJECT_ROOT + "/outputs/checkpoints/EXP_H_FULL_BOTH/scratch_fold1_best.pt"
-
-CKPT_DIR = PROJECT_ROOT + "/outputs/checkpoints/EXP_H_FULL_TO_TORABI_FOLD1_MIXED_noaug"
-RESULTS_DIR = PROJECT_ROOT + "/outputs/results/" + EXPERIMENT_NAME
+EXPERIMENT_NAME = f"ESD_JASSNET_MIXED_FOLD{HLSCMDS_FOLD}"
+CKPT_DIR = str(PROJECT_ROOT / "outputs" / "checkpoints" / EXPERIMENT_NAME)
+RESULTS_DIR = str(PROJECT_ROOT / "outputs" / "results" / EXPERIMENT_NAME)
 EVAL_CKPT = None
-STAGE = "finetune"
 
-MIXED_TRAINING = True  #deve tornare a true x il training
+# Controlled HLS-CMDS target-domain dataset for the selected fold.
+# The fallback directory name preserves the original experimental layout.
+SUPERVISED_DIR = os.environ.get(
+    "HLSCMDS_TARGET_DIR",
+    str(
+        PROJECT_ROOT
+        / "dataset"
+        / "processed"
+        / f"torabi_full_40x40_10x10_no_unused_fold{HLSCMDS_FOLD}"
+    ),
+)
+SOURCE_DISJOINT_SPLIT_CSV = os.environ.get(
+    "HLSCMDS_SPLIT_CSV",
+    str(Path(SUPERVISED_DIR) / "source_disjoint_split_smoke.csv"),
+)
 USE_SOURCE_DISJOINT_SPLIT = True
-SOURCE_DISJOINT_SPLIT_CSV = SUPERVISED_DIR + "/source_disjoint_split_smoke.csv"
 
+# EXP_H source-domain replay dataset. Only the training split is used.
+SYNTH_SUPERVISED_DIR = os.environ.get(
+    "EXPH_DATA_DIR",
+    str(PROJECT_ROOT / "dataset" / "processed" / "experiment_H_full_both"),
+)
+SYNTH_SOURCE_DISJOINT_SPLIT_CSV = os.environ.get(
+    "EXPH_SPLIT_CSV",
+    str(Path(SYNTH_SUPERVISED_DIR) / "source_disjoint_split_smoke.csv"),
+)
+SYNTH_REPLAY_FOLD_NO = 1
+SYNTH_REPLAY_SPLIT = "train"
+REQUIRE_SYNTH_TRAIN_SPLIT = True
+
+# Stage-1 EXP_H checkpoint used to initialise mixed-domain adaptation.
+PRETRAIN_CKPT = os.environ.get(
+    "ESD_JASSNET_STAGE1_CKPT",
+    str(
+        PROJECT_ROOT
+        / "outputs"
+        / "checkpoints"
+        / "EXP_H_FULL_BOTH"
+        / "scratch_fold1_best.pt"
+    ),
+)
+
+# Compatibility placeholder used by the training code.
+PSEUDO_DIR = ""
+
+# -----------------------------------------------------------------------------
+# Run mode and reproducibility
+# -----------------------------------------------------------------------------
+STAGE = "finetune"
 N_FOLDS = 1
 ONLY_FOLD = 1
 SEED = 42
 MODEL_SEED = 42
+SMOKE_MAX_BASE_TRIPLETS = None
 
+# -----------------------------------------------------------------------------
+# Optimisation
+# -----------------------------------------------------------------------------
 BATCH_SIZE = 64
 NUM_WORKERS = 4
 WEIGHT_DECAY = 1e-5
 GRAD_CLIP = 5.0
 
+# Stage 1 is performed separately; these fields are retained for compatibility.
 PRETRAIN_EPOCHS = 0
 PRETRAIN_LR = 1e-4
 PRETRAIN_PATIENCE = 5
 
+# Final Stage-2 mixed fine-tuning schedule reported in the thesis.
 FINETUNE_MODE = "full"
-FINETUNE_EPOCHS = 12
+FINETUNE_EPOCHS = 10
 FINETUNE_PATIENCE = 3
-FINETUNE_LR = 5e-6
-FULL_FINETUNE_LR = 5e-6
-SEPARATOR_FINETUNE_LR = 5e-6
+FINETUNE_LR = 1e-6
+FULL_FINETUNE_LR = 1e-6
+SEPARATOR_FINETUNE_LR = 1e-6
 WARMUP_EPOCHS = 0
 
-# Mixed-domain schedule: gradually increase probability of Torabi target batches.
+# -----------------------------------------------------------------------------
+# Mixed-domain adaptation
+# -----------------------------------------------------------------------------
+MIXED_TRAINING = True
 MIXED_USE_CURRICULUM = True
-MIXED_CURRICULUM = ((0, 0.30), (3, 0.50), (7, 0.70))
-MIXED_V2_PROB = 0.50
+MIXED_CURRICULUM = ((0, 0.30), (3, 0.50), (6, 0.70))
+MIXED_V2_PROB = 0.50  # compatibility fallback when curriculum is disabled
+
 MIXED_WEIGHT_V2 = 1.0
 MIXED_WEIGHT_SYNTH = 0.05
 MIXED_STEPS_PER_EPOCH = None
 MIXED_SYNTH_MAX_SEGMENTS = 30000
 
+# -----------------------------------------------------------------------------
+# Loss configuration
+# -----------------------------------------------------------------------------
 LOSS_WEIGHT_H = 1.0
 LOSS_WEIGHT_L = 1.0
 LAMBDA_L1 = 0.0
@@ -89,52 +162,31 @@ LAMBDA_POLARITY = 0.1
 LAMBDA_MIX = 0.0
 LAMBDA_MIX_POLARITY = 0.0
 
+# Compatibility options used by the training code.
+TARGET_GAIN_MODE = "none"
+TARGET_GAIN_H = 1.0
+TARGET_GAIN_L = 1.0
+TARGET_GAIN_REMOVE_DC = True
+USE_BASE_TRIPLET_ALLOWLIST = False
+BASE_TRIPLET_ALLOWLIST = ()
+BASE_TRIPLET_DENYLIST = ()
+
+# -----------------------------------------------------------------------------
+# Filtering and augmentation
+# -----------------------------------------------------------------------------
 FILTER_LOCAL_SNR = False
 LOCAL_SNR_THRESHOLD_DB = 15.0
 LOCAL_SNR_ANALYSIS_CSV = ""
 
+# The final mixed fine-tuning experiment uses no augmentation.
 AUGMENT_TRAINING = False
 USE_V1_RESYNTH_TRAIN_INJECTION = False
-SMOKE_MAX_BASE_TRIPLETS = None
+AUGMENT_REPLAY_TORABI_MORPH = False
+AUGMENT_TARGET_RANDOMIZATION = False
 
+# -----------------------------------------------------------------------------
+# Evaluation / inference-time calibration
+# -----------------------------------------------------------------------------
 APPLY_MIXTURE_POLARITY_CALIBRATION = True
 APPLY_MIXTURE_GAIN_CALIBRATION = True
 EVALUATE_POST_TRAINING = False
-
-# Compatibility placeholders used by train_disjoint.py.
-PSEUDO_DIR = ""
-
-SYNTH_SOURCE_DISJOINT_SPLIT_CSV = SYNTH_SUPERVISED_DIR + "/source_disjoint_split_smoke.csv"
-SYNTH_REPLAY_FOLD_NO = 1
-SYNTH_REPLAY_SPLIT = "train"
-REQUIRE_SYNTH_TRAIN_SPLIT = True
-
-# ============================================================
-# Replay-only Torabi-like morphology augmentation V2
-# ============================================================
-
-AUGMENT_REPLAY_TORABI_MORPH = False
-TORABI_MORPH_PROB = 0.50
-TORABI_MORPH_PRESERVE_PEAK = True
-TORABI_MORPH_PEAK_VALUE = 0.95
-TORABI_MORPH_PRESERVE_SOURCE_RMS = True
-
-TORABI_MORPH_APPLY_LS_PROB = 0.90
-TORABI_MORPH_LS_BAND_150_1000_BOOST_DB = (1.0, 4.0)
-TORABI_MORPH_LS_BAND_500_1000_BOOST_DB = (1.0, 5.0)
-TORABI_MORPH_LS_TRANSIENT_PROB = 0.50
-TORABI_MORPH_LS_TRANSIENT_STRENGTH = (0.04, 0.18)
-TORABI_MORPH_LS_TRANSIENT_HIGH_HZ = 1000.0
-TORABI_MORPH_LS_TEXTURE_PROB = 0.35
-TORABI_MORPH_LS_TEXTURE_SNR_DB = (30.0, 40.0)
-TORABI_MORPH_LS_TEXTURE_LOW_HZ = 150.0
-TORABI_MORPH_LS_TEXTURE_HIGH_HZ = 1000.0
-
-TORABI_MORPH_APPLY_HS_PROB = 0.30
-TORABI_MORPH_HS_BAND_150_500_BOOST_DB = (0.0, 1.5)
-TORABI_MORPH_HS_TRANSIENT_PROB = 0.15
-TORABI_MORPH_HS_TRANSIENT_STRENGTH = (0.02, 0.08)
-
-
-
-#retention -> fold1
