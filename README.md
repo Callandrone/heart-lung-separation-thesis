@@ -220,7 +220,7 @@ The experimental framework reports:
 - global-SNR and local-SNR stratification;
 - clustered bootstrap confidence intervals;
 - paired clustered bootstrap for model comparisons;
-- qualitative best, median and worst cases selected by metric rank.
+- qualitative cases.
 
 Overlapping windows derived from the same full recording are not treated as statistically independent. Bootstrap resampling is therefore performed at the base-recording level.
 
