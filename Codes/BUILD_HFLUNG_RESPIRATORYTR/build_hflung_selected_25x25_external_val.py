@@ -39,10 +39,8 @@ The processed folder is compatible with evaluate_polarity_control.py:
 
 Example
 -------
-python build_hflung_selected_25x25_external_val.py \
-  --hs-quality-csv /nas/home/pcallandrone/DeepLearning/outputs/smoke_phy_ich_hsnormal_ls3_selection/physionet_all_candidates_quality.csv \
-  --hflung-rank-csv /nas/home/pcallandrone/DeepLearning/outputs/domain_gap/HFLUNG_trend_vs_SELECTED_ICBHI_SMOKE/hflung_files_ranked_by_similarity_to_selected_icbhi.csv \
-  --hflung-root /nas/home/pcallandrone/DeepLearning/dataset/raw/HF_Lung_V1 \
+python Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_25x25_external_val.py \
+  --project-root . \
   --selection top25 \
   --overwrite
 """
@@ -64,7 +62,7 @@ from scipy.signal import resample_poly
 from tqdm import tqdm
 
 
-PROJECT_ROOT = Path("/nas/home/pcallandrone/DeepLearning")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TARGET_SR = 4000
 DURATION_SEC = 15.0
 TARGET_LEN = int(TARGET_SR * DURATION_SEC)
@@ -770,12 +768,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--project-root", type=Path, default=PROJECT_ROOT)
 
     p.add_argument("--hs-quality-csv", type=Path, default=None, help="PhysioNet candidate quality CSV. Used if --hs-selected-csv is missing/unavailable.")
-    p.add_argument("--hs-selected-csv", type=Path, default=PROJECT_ROOT / "dataset" / "EXP_H_FULL_BOTH_SELECTED" / "selected_hs_EXP_H_FULL_BOTH.csv")
+    p.add_argument("--hs-selected-csv", type=Path, default=None)
     p.add_argument("--hs-split", type=str, default="all", choices=["all", "train", "val"], help="Filter HS selected manifest by split. Ignored for quality CSV unless split column exists and selected CSV is used.")
 
-    p.add_argument("--hflung-rank-csv", type=Path, default=PROJECT_ROOT / "outputs" / "domain_gap" / "HFLUNG_trend_vs_SELECTED_ICBHI_SMOKE" / "hflung_files_ranked_by_similarity_to_selected_icbhi.csv")
-    p.add_argument("--hflung-label-csv", type=Path, default=PROJECT_ROOT / "outputs" / "domain_gap" / "HFLUNG_SELECTED_LABEL_SUMMARY" / "hflung_selected_files_with_labels.csv")
-    p.add_argument("--hflung-root", type=Path, default=PROJECT_ROOT / "dataset" / "raw" / "HF_Lung_V1")
+    p.add_argument("--hflung-rank-csv", type=Path, default=None)
+    p.add_argument("--hflung-label-csv", type=Path, default=None)
+    p.add_argument("--hflung-root", type=Path, default=None)
 
     p.add_argument("--selection", type=str, default="top25", choices=["top25", "top50_first25", "top50", "very_close", "very_close_p95_1", "close"])
     p.add_argument("--prefer-trunc", action="store_true", help="Keep only trunc_ HF_Lung files before taking n_ls.")
@@ -788,6 +786,38 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--overwrite", action="store_true")
 
     args = p.parse_args()
+
+    project_root = Path(args.project_root)
+
+    if args.hs_selected_csv is None:
+        args.hs_selected_csv = (
+            project_root
+            / "dataset"
+            / "EXP_H_FULL_BOTH_SELECTED"
+            / "selected_hs_EXP_H_FULL_BOTH.csv"
+        )
+
+    if args.hflung_rank_csv is None:
+        args.hflung_rank_csv = (
+            project_root
+            / "outputs"
+            / "domain_gap"
+            / "HFLUNG_trend_vs_SELECTED_ICBHI"
+            / "hflung_files_ranked_by_similarity_to_selected_icbhi.csv"
+        )
+
+    if args.hflung_label_csv is None:
+        args.hflung_label_csv = (
+            project_root
+            / "outputs"
+            / "domain_gap"
+            / "HFLUNG_SELECTED_LABEL_SUMMARY"
+            / "hflung_selected_files_with_labels.csv"
+        )
+
+    if args.hflung_root is None:
+        args.hflung_root = project_root / "dataset" / "raw" / "HF_Lung_V1"
+
     args.snrs = parse_snr_values(args.snrs)
     return args
 

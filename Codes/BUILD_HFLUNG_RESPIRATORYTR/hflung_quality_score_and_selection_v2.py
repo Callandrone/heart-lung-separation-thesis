@@ -31,8 +31,8 @@ Notes
 
 Example
 -------
-python 01_hflung_quality_score_and_selection.py \
-  --raw-root /nas/home/pcallandrone/DeepLearning/dataset/raw/HF_Lung_V1 \
+python Codes/BUILD_HFLUNG_RESPIRATORYTR/hflung_quality_score_and_selection_v2.py \
+  --project-root . \
   --overwrite
 """
 
@@ -67,7 +67,7 @@ EPS = 1e-12
 # Defaults
 # -----------------------------------------------------------------------------
 
-DEFAULT_PROJECT_ROOT = Path("/nas/home/pcallandrone/DeepLearning")
+DEFAULT_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RAW_ROOT = DEFAULT_PROJECT_ROOT / "dataset" / "raw" / "HF_Lung_V1"
 DEFAULT_OUT_DIR = DEFAULT_PROJECT_ROOT / "outputs" / "hflung_v1_quality_selection"
 DEFAULT_PROCESSED_DIR = DEFAULT_PROJECT_ROOT / "dataset" / "processed" / "hflung_v1_selected_70_audit"
@@ -862,9 +862,9 @@ def write_selection_summary(all_df: pd.DataFrame, selected_df: pd.DataFrame, out
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--project-root", type=Path, default=DEFAULT_PROJECT_ROOT)
-    p.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
-    p.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
-    p.add_argument("--processed-dir", type=Path, default=DEFAULT_PROCESSED_DIR)
+    p.add_argument("--raw-root", type=Path, default=None)
+    p.add_argument("--out-dir", type=Path, default=None)
+    p.add_argument("--processed-dir", type=Path, default=None)
     p.add_argument("--metadata-csv", type=Path, default=None)
     p.add_argument("--metadata-label-col", type=str, default="", help="Optional explicit label column in metadata CSV.")
     p.add_argument("--target-sr", type=int, default=TARGET_SR)
@@ -880,9 +880,23 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    raw_root: Path = args.raw_root
-    out_dir: Path = ensure_dir(args.out_dir)
-    processed_dir: Path = args.processed_dir
+    project_root = Path(args.project_root)
+
+    raw_root: Path = (
+        args.raw_root
+        if args.raw_root is not None
+        else project_root / "dataset" / "raw" / "HF_Lung_V1"
+    )
+    out_dir: Path = ensure_dir(
+        args.out_dir
+        if args.out_dir is not None
+        else project_root / "outputs" / "hflung_v1_quality_selection"
+    )
+    processed_dir: Path = (
+        args.processed_dir
+        if args.processed_dir is not None
+        else project_root / "dataset" / "processed" / "hflung_v1_selected_70_audit"
+    )
 
     if not raw_root.exists():
         raise FileNotFoundError(f"Raw HF_Lung root not found: {raw_root}")

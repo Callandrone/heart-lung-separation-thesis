@@ -20,6 +20,9 @@ import soundfile as sf
 from tqdm import tqdm
 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
 def peak_normalise(x: np.ndarray, peak: float = 0.95, eps: float = 1e-8) -> np.ndarray:
     p = float(np.max(np.abs(x))) if len(x) else 0.0
     if p < eps:
@@ -79,12 +82,25 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument(
         "--extract-root",
-        default="/nas/home/pcallandrone/DeepLearning/dataset/raw/respiratoryTR_p9z4h98s6j_v1/extracted",
+        type=Path,
+        default=(
+            REPO_ROOT
+            / "dataset"
+            / "raw"
+            / "respiratoryTR_p9z4h98s6j_v1"
+            / "extracted"
+        ),
         help="Root folder containing extracted RespiratoryDatabase@TR files and Labels.xlsx.",
     )
     ap.add_argument(
         "--out-dir",
-        default="/nas/home/pcallandrone/DeepLearning/dataset/processed/respiratoryTR_real_mixture_audit",
+        type=Path,
+        default=(
+            REPO_ROOT
+            / "dataset"
+            / "processed"
+            / "respiratoryTR_real_mixture_audit"
+        ),
         help="Output processed dataset directory.",
     )
     ap.add_argument("--sr", type=int, default=4000)

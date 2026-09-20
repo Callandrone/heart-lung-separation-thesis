@@ -41,6 +41,8 @@ TARGET_LEN = int(TARGET_SR * DURATION_SEC)
 EPS = 1e-10
 AUDIO_EXTS = {".wav", ".flac", ".aif", ".aiff"}
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 PATH_COL_CANDIDATES = [
     "resolved_path", "resolved_audio_path", "output_path", "fixed_path", "fixed_audio_path",
     "processed_path", "source_path", "audio_path", "wav_path", "path", "file_path",
@@ -486,7 +488,7 @@ def create_candidate_csv(
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
-    p.add_argument("--project-root", type=Path, default=Path("/nas/home/pcallandrone/DeepLearning"))
+    p.add_argument("--project-root", type=Path, default=REPO_ROOT)
     p.add_argument("--external-selected-root", type=Path, default=None, help="Root like dataset/HFLUNG_SELECTED_20X20_EXTERNAL_VAL_SELECTED")
     p.add_argument("--external-hs-csv", type=Path, default=None, help="Explicit selected_hs_physionet*.csv")
     p.add_argument("--exph-hs-selected-csv", type=Path, default=None, help="EXP_H selected_hs_EXP_H_FULL_BOTH.csv")
