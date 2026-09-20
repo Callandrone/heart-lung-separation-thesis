@@ -1,0 +1,13 @@
+# Direct runtime dependencies used by the release code.
+# Python 3.10 or newer is recommended.
+
+librosa
+matplotlib
+numpy
+openpyxl
+pandas
+scikit-learn
+scipy
+soundfile
+torch
+tqdm

@@ -243,31 +243,37 @@ These measurements demonstrate a broad statistical mismatch in the analysed feat
 
 ```text
 Assets/
-└── esd-jassnet_forward.png          Architecture figure
+`-- esd-jassnet_forward.png          Architecture figure
 
 Codes/
-??? EXP_H_BUILD/                     EXP_H benchmark construction
-??? HLS_CMDS_BUILD/                  HLS-CMDS controlled-mixture and fold construction
-??? MIXED_TUNING/                    Supervised mixed-domain adaptation with source replay
-??? SSL_MIXED/                       Final semi-supervised ESD-JASSNet pipeline
-??? DOMAIN_GAP/                      Acoustic domain-gap analyses
-??? ERROR_ANALYSIS/                  Error analysis and statistical evaluation
-??? BUILD_HFLUNG_RESPIRATORYTR/      External-dataset preparation and audit scripts
+|-- EXP_H_BUILD/                     EXP_H benchmark construction
+|-- HLS_CMDS_BUILD/                  HLS-CMDS controlled-mixture and fold construction
+|-- MIXED_TUNING/                    Supervised mixed-domain adaptation with source replay
+|-- SSL_MIXED/                       Final semi-supervised ESD-JASSNet pipeline
+|-- DOMAIN_GAP/                      Acoustic domain-gap analyses
+|-- ERROR_ANALYSIS/                  Error analysis and statistical evaluation
+`-- BUILD_HFLUNG_RESPIRATORYTR/      External-dataset preparation and audit scripts
 
 Deliverables/
-├── DeepLearning_Model/              Representative deep-learning outputs
-└── NMF_Montoro/                     Representative reconstructed NMF outputs
+|-- DeepLearning_Model/              Representative deep-learning outputs
+`-- NMF_Montoro/                     Representative reconstructed NMF outputs
 
 HLS_CMDS_ALIGNED/
-├── HS/                              Standalone heart-sound recordings
-├── LS/                              Standalone lung-sound recordings
-└── Mix/                             Physical cardiopulmonary mixtures
+|-- HS/                              Standalone heart-sound recordings
+|-- LS/                              Standalone lung-sound recordings
+`-- Mix/                             Physical cardiopulmonary mixtures
 ```
 
-The scripts under `Codes/` preserve the experimental implementations used throughout the thesis. `Codes/SSL_MIXED/` contains the final proposed semi-supervised pipeline, while the remaining directories document intermediate training stages, comparison systems and analyses.
+The scripts under `Codes/` preserve the experimental implementations used
+throughout the thesis. `Codes/SSL_MIXED/` contains the final proposed
+semi-supervised pipeline. The other directories contain dataset construction,
+supervised adaptation, external validation and post-hoc analysis utilities.
 
 ---
+
 ## Installation
+
+Python 3.10 or newer is recommended.
 
 Clone the repository and create an isolated Python environment:
 
@@ -278,17 +284,53 @@ cd heart-lung-separation-thesis
 python -m venv .venv
 ```
 
-Activate the environment on Windows PowerShell:
+Activate the environment.
+
+On Windows PowerShell:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
+On Linux or macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+Install the direct runtime dependencies:
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
 ### Path configuration
 
-The experimental scripts were originally executed on a research server and some configuration files therefore retain the absolute paths of the original experimental environment.
+The release code uses repository-relative defaults together with command-line
+arguments and environment variables instead of requiring the original
+research-server filesystem.
 
-Before running an experiment on another machine, update `PROJECT_ROOT` and the relevant dataset, checkpoint and output paths in the corresponding `model_config.py`.
+The main training pipelines can be configured through variables such as:
 
-These paths are retained to document the original experimental setup and do not need to match the local repository location.
+- `ESD_JASSNET_ROOT`;
+- `HLSCMDS_FOLD`;
+- `HLSCMDS_TARGET_DIR`;
+- `HLSCMDS_SPLIT_CSV`;
+- `EXPH_DATA_DIR`;
+- `EXPH_SPLIT_CSV`;
+- `ESD_JASSNET_STAGE1_CKPT`;
+- `ESD_JASSNET_STAGE2_CKPT`;
+- `ESD_JASSNET_SSL_PSEUDO_DIR`;
+- `ESD_JASSNET_SSL_MANIFEST`.
 
+Dataset builders and analysis scripts additionally expose command-line options
+for their relevant input and output locations.
+
+See the README inside each `Codes/` subdirectory for the corresponding workflow
+and configuration details.
+
+Raw third-party datasets and trained checkpoints are not duplicated in this
+repository unless explicitly included. The repository instead provides the
+dataset-construction, training, adaptation and evaluation code used in the
+thesis.
