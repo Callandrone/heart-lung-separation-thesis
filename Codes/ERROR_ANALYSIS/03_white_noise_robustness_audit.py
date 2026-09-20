@@ -50,56 +50,77 @@ import matplotlib.pyplot as plt
 
 
 # =============================================================================
-# STATIC CONFIG
+# RUNTIME CONFIGURATION
 # =============================================================================
 
-ERROR_ANALYSIS_SCRIPT = Path(
-    "/nas/home/pcallandrone/DeepLearning/codes/ERROR_ANALYSIS/01_error_analysis_final_mixed_ssl.py"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+ERROR_ANALYSIS_SCRIPT = Path(__file__).resolve().with_name(
+    "01_error_analysis_final_mixed_ssl.py"
 )
 
 DATASET_DIR = Path(
-    "/nas/home/pcallandrone/DeepLearning/dataset/processed/torabi_full_40x40_10x10_no_unused_fold2"
+    os.environ.get(
+        "HLSCMDS_DATASET_DIR",
+        str(
+            REPO_ROOT
+            / "dataset"
+            / "processed"
+            / "torabi_full_40x40_10x10_no_unused_fold2"
+        ),
+    )
 )
 
 SPLIT_CSV = Path(
-    "/nas/home/pcallandrone/DeepLearning/dataset/processed/torabi_full_40x40_10x10_no_unused_fold2/source_disjoint_split_smoke.csv"
+    os.environ.get(
+        "HLSCMDS_SPLIT_CSV",
+        str(DATASET_DIR / "source_disjoint_split_smoke.csv"),
+    )
 )
 
-CKPT = Path(
-    "/nas/home/pcallandrone/DeepLearning/outputs/checkpoints/SSL - FOLD2_EXPERIMENT26GIUGNO_NUMBERONE/finetune_fold1_best.pt"
+_ckpt_env = os.environ.get("ESD_JASSNET_SSL_CHECKPOINT")
+CKPT: Optional[Path] = (
+    Path(_ckpt_env).expanduser() if _ckpt_env else None
 )
 
 OUT_DIR = Path(
-    "/nas/home/pcallandrone/DeepLearning/outputs/results/ERROR_ANALYSIS/white_noise_robustness_final_ssl_fold2"
+    os.environ.get(
+        "ERROR_ANALYSIS_OUT_DIR",
+        str(
+            REPO_ROOT
+            / "outputs"
+            / "results"
+            / "ERROR_ANALYSIS"
+            / "white_noise_robustness_final_ssl_fold2"
+        ),
+    )
 )
 
-# In questa cartella Fold2-specific, il checkpoint è finetune_fold1_best.pt.
-# Quindi usiamo FOLD = 1, come nella pipeline corrente.
-FOLD = 1
+# The historical Fold-2 export uses fold label 1 in this evaluation setup.
+FOLD = int(os.environ.get("HLSCMDS_FOLD", "1"))
 
 SR = 4000
 SEG_SAMPLES = 8000
 
-# Noise SNR rispetto alla clean mixture RMS.
-# clean = nessun rumore.
+# White-noise SNR relative to the clean-mixture RMS.
+# None denotes the clean baseline.
 NOISE_SNRS_DB: Sequence[Optional[float]] = [
-    None,   # clean baseline
-    30.0,   # very light noise
-    20.0,   # moderate realistic-ish stress
-    10.0,   # strong noise
-    5.0,    # very strong noise
-    0.0,    # extreme stress test
+    None,
+    30.0,
+    20.0,
+    10.0,
+    5.0,
+    0.0,
 ]
 
-# Per fare prima uno smoke test, metti ad esempio 1000.
-# Per la run finale, lascia None.
+# Optional cap for a reduced validation run.
+# None evaluates the complete selected split.
 MAX_FILES: Optional[int] = None
 
 SEED = 12345
 
-# Per questo audit consiglio:
-# - polarity calibration sì, perché è deterministic e risolve solo il segno globale;
-# - gain calibration no, perché altrimenti forzi gli output verso la mixture rumorosa.
+# Polarity calibration follows the final inference procedure.
+# Gain calibration is disabled so outputs are not forced toward the noisy mixture.
 APPLY_POLARITY_CALIBRATION = True
 APPLY_GAIN_CALIBRATION = False
 
@@ -370,6 +391,10 @@ def main() -> None:
         raise FileNotFoundError(f"Dataset not found: {DATASET_DIR}")
     if not SPLIT_CSV.exists():
         raise FileNotFoundError(f"Split CSV not found: {SPLIT_CSV}")
+    if CKPT is None:
+        raise RuntimeError(
+            "Set ESD_JASSNET_SSL_CHECKPOINT to the SSL checkpoint to evaluate."
+        )
     if not CKPT.exists():
         raise FileNotFoundError(f"Checkpoint not found: {CKPT}")
 

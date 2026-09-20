@@ -41,7 +41,7 @@ The project includes:
    A compact time-domain separator with approximately **300k trainable parameters**.
 
 4. **Controlled and capacity-matched comparisons**  
-   Comparison with reconstructed JASSNet-like controlled, deeper and wider variants.
+   Capacity-matched JASSNet-like comparison results reported in the thesis. The auxiliary reconstruction code is not distributed in this public repository.
 
 5. **Acoustic domain-gap analysis**  
    Quantification through RMS-normalised acoustic features, standardised mean differences, a domain classifier and CORAL covariance distance.
@@ -86,6 +86,8 @@ Purpose:
 - learn the initial HS/LS separation function;
 - establish a strong source-domain checkpoint;
 - provide the replay and retention reference for later adaptation stages.
+
+The source-domain checkpoint was trained using the same supervised training implementation used by the adaptation code, with mixed-domain sampling and replay disabled. For this reason, a separate Stage-1 implementation is not duplicated in the repository.
 
 ### Stage 2 — Supervised target adaptation with replay
 
@@ -244,12 +246,13 @@ Assets/
 └── esd-jassnet_forward.png          Architecture figure
 
 Codes/
-├── SSL_MIXED/                       Final semi-supervised ESD-JASSNet pipeline
-├── MIXED_TUNING/                    Supervised mixed-domain adaptation with source replay
-├── JASSNET - RECONSTRUCTION/        Reconstructed JASSNet-like comparison models
-├── DOMAIN_GAP/                      Acoustic domain-gap analyses
-├── ERROR_ANALYSIS/                  Error analysis and statistical evaluation
-└── BUILD_HFLUNG_RESPIRATORYTR/      External-dataset preparation and audit scripts
+??? EXP_H_BUILD/                     EXP_H benchmark construction
+??? HLS_CMDS_BUILD/                  HLS-CMDS controlled-mixture and fold construction
+??? MIXED_TUNING/                    Supervised mixed-domain adaptation with source replay
+??? SSL_MIXED/                       Final semi-supervised ESD-JASSNet pipeline
+??? DOMAIN_GAP/                      Acoustic domain-gap analyses
+??? ERROR_ANALYSIS/                  Error analysis and statistical evaluation
+??? BUILD_HFLUNG_RESPIRATORYTR/      External-dataset preparation and audit scripts
 
 Deliverables/
 ├── DeepLearning_Model/              Representative deep-learning outputs

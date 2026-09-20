@@ -18,13 +18,11 @@ with lower LS SI-SDR / lower mean SI-SDR / higher failure rates?
 
 Expected inputs
 ---------------
-1) Domain-gap segment-level feature CSV, e.g.:
-   /nas/home/pcallandrone/DeepLearning/outputs/domain_gap - fold/DOMAIN-GAP/
-   domain_gap_EXP_H_ALL_vs_TORABI_FOLD2_ALL/segment_level_features_sampled.csv
+1) Domain-gap segment-level feature CSV, for example:
+   outputs/domain_gap/<run>/segment_level_features_sampled.csv
 
-2) Final error-analysis per-sample metrics CSV, e.g.:
-   /nas/home/pcallandrone/DeepLearning/outputs/results/ERROR_ANALYSIS/final_ssl_fold2/
-   metrics/per_sample_error_metrics.csv
+2) Final error-analysis per-sample metrics CSV, for example:
+   outputs/results/ERROR_ANALYSIS/<run>/metrics/per_sample_error_metrics.csv
 
 The script tries to attach each error-analysis sample to its Torabi LS source by
 joining (base_id, segment_index) against the Torabi LS rows in the domain-gap

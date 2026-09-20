@@ -29,15 +29,22 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
 
 
-DEFAULT_AUDIT55_PATH = "/nas/home/pcallandrone/DeepLearning/04_hflung_global_vs_exph_baseline.py"
+HERE = Path(__file__).resolve().parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
-DEFAULT_EXPH_DIR = "/nas/home/pcallandrone/DeepLearning/dataset/processed/experiment_H_full_both"
-DEFAULT_HFLUNG_DIR = "/nas/home/pcallandrone/DeepLearning/dataset/raw/HF_Lung_V1"
-DEFAULT_OUT_DIR = "/nas/home/pcallandrone/DeepLearning/outputs/domain_gap/HFLUNG_trend_vs_SELECTED_ICBHI"
+DEFAULT_BASELINE_AUDIT_PATH = HERE / "04_hflung_global_vs_exph_baseline.py"
+DEFAULT_EXPH_DIR = REPO_ROOT / "dataset" / "processed" / "experiment_H_full_both"
+DEFAULT_HFLUNG_DIR = REPO_ROOT / "dataset" / "raw" / "HF_Lung_V1"
+DEFAULT_OUT_DIR = (
+    REPO_ROOT
+    / "outputs"
+    / "domain_gap"
+    / "HFLUNG_trend_vs_SELECTED_ICBHI"
+)
 
 
-def import_audit55(path: str):
-    spec = importlib.util.spec_from_file_location("audit55", path)
+def import_baseline_audit(path: str):
+    spec = importlib.util.spec_from_file_location("hflung_baseline_audit", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -164,10 +171,16 @@ def make_pca_plot(ref_df, query_df, feature_cols, out_path, max_points_per_domai
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--audit55_path", type=str, default=DEFAULT_AUDIT55_PATH)
-    parser.add_argument("--exph_dir", type=str, default=DEFAULT_EXPH_DIR)
-    parser.add_argument("--hflung_dir", type=str, default=DEFAULT_HFLUNG_DIR)
-    parser.add_argument("--out_dir", type=str, default=DEFAULT_OUT_DIR)
+    parser.add_argument(
+        "--baseline_audit_path",
+        "--audit55_path",
+        dest="baseline_audit_path",
+        type=str,
+        default=str(DEFAULT_BASELINE_AUDIT_PATH),
+    )
+    parser.add_argument("--exph_dir", type=str, default=str(DEFAULT_EXPH_DIR))
+    parser.add_argument("--hflung_dir", type=str, default=str(DEFAULT_HFLUNG_DIR))
+    parser.add_argument("--out_dir", type=str, default=str(DEFAULT_OUT_DIR))
 
     parser.add_argument("--max_exph_segments", type=int, default=20000)
     parser.add_argument("--max_hflung_files", type=int, default=None)
@@ -180,7 +193,7 @@ def main():
 
     args = parser.parse_args()
 
-    audit = import_audit55(args.audit55_path)
+    audit = import_baseline_audit(args.baseline_audit_path)
 
     exph_dir = Path(args.exph_dir)
     hflung_dir = Path(args.hflung_dir)

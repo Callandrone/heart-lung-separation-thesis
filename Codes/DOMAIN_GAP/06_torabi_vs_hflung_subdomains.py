@@ -29,9 +29,28 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-DEFAULT_TORABI_GAP_DIR = "/nas/home/pcallandrone/DeepLearning/outputs/domain_gap/domain_gap_EXP_H_vs_TORABI_FOLD2"
-DEFAULT_HFLUNG_AUDIT_DIR = "/nas/home/pcallandrone/DeepLearning/outputs/domain_gap/HFLUNG_trend_vs_SELECTED_ICBHI_SMOKE"
-DEFAULT_OUT_DIR = "/nas/home/pcallandrone/DeepLearning/outputs/domain_gap/TORABI_vs_HFLUNG_CLOSE_SUBDOMAINS"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+DEFAULT_TORABI_GAP_DIR = (
+    REPO_ROOT
+    / "outputs"
+    / "domain_gap"
+    / "domain_gap_EXP_H_vs_TORABI_FOLD2"
+)
+
+DEFAULT_HFLUNG_AUDIT_DIR = (
+    REPO_ROOT
+    / "outputs"
+    / "domain_gap"
+    / "HFLUNG_trend_vs_SELECTED_ICBHI"
+)
+
+DEFAULT_OUT_DIR = (
+    REPO_ROOT
+    / "outputs"
+    / "domain_gap"
+    / "TORABI_vs_HFLUNG_CLOSE_SUBDOMAINS"
+)
 
 
 FEATURES = [
@@ -172,9 +191,9 @@ def make_barplot(summary_df: pd.DataFrame, out_path: Path):
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--torabi_gap_dir", type=str, default=DEFAULT_TORABI_GAP_DIR)
-    parser.add_argument("--hflung_audit_dir", type=str, default=DEFAULT_HFLUNG_AUDIT_DIR)
-    parser.add_argument("--out_dir", type=str, default=DEFAULT_OUT_DIR)
+    parser.add_argument("--torabi_gap_dir", type=str, default=str(DEFAULT_TORABI_GAP_DIR))
+    parser.add_argument("--hflung_audit_dir", type=str, default=str(DEFAULT_HFLUNG_AUDIT_DIR))
+    parser.add_argument("--out_dir", type=str, default=str(DEFAULT_OUT_DIR))
 
     parser.add_argument("--top_n", type=int, default=50)
     parser.add_argument("--seed", type=int, default=42)

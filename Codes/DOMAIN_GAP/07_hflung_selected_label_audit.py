@@ -32,9 +32,28 @@ from pathlib import Path
 import pandas as pd
 
 
-DEFAULT_AUDIT_DIR = "/nas/home/pcallandrone/DeepLearning/outputs/domain_gap/HFLUNG_trend_vs_SELECTED_ICBHI_SMOKE"
-DEFAULT_HFLUNG_ROOT = "/nas/home/pcallandrone/DeepLearning/dataset/raw/HF_Lung_V1"
-DEFAULT_OUT_DIR = "/nas/home/pcallandrone/DeepLearning/outputs/domain_gap/HFLUNG_SELECTED_LABEL_SUMMARY"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+DEFAULT_AUDIT_DIR = (
+    REPO_ROOT
+    / "outputs"
+    / "domain_gap"
+    / "HFLUNG_trend_vs_SELECTED_ICBHI"
+)
+
+DEFAULT_HFLUNG_ROOT = (
+    REPO_ROOT
+    / "dataset"
+    / "raw"
+    / "HF_Lung_V1"
+)
+
+DEFAULT_OUT_DIR = (
+    REPO_ROOT
+    / "outputs"
+    / "domain_gap"
+    / "HFLUNG_SELECTED_LABEL_SUMMARY"
+)
 
 
 ADVENTITIOUS_KEYWORDS = {

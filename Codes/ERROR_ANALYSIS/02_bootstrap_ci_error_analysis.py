@@ -32,6 +32,11 @@ import numpy as np
 import pandas as pd
 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_ERROR_ROOT = REPO_ROOT / "outputs" / "results" / "ERROR_ANALYSIS"
+DEFAULT_OUT_DIR = DEFAULT_ERROR_ROOT / "bootstrap_ci_final_ssl"
+
+
 # ---------------------------------------------------------------------
 # Runs to compare
 # ---------------------------------------------------------------------
@@ -431,13 +436,13 @@ def main() -> None:
     parser.add_argument(
         "--error-root",
         type=str,
-        default="/nas/home/pcallandrone/DeepLearning/outputs/results/ERROR_ANALYSIS",
+        default=str(DEFAULT_ERROR_ROOT),
         help="Root folder containing the error-analysis result directories.",
     )
     parser.add_argument(
         "--out-dir",
         type=str,
-        default="/nas/home/pcallandrone/DeepLearning/outputs/results/ERROR_ANALYSIS/bootstrap_ci_final_ssl",
+        default=str(DEFAULT_OUT_DIR),
         help="Output folder for bootstrap CSVs.",
     )
     parser.add_argument("--n-boot", type=int, default=10000)
