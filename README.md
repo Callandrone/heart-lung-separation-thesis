@@ -239,37 +239,6 @@ The source-target acoustic comparison uses 39 RMS-normalised features. The repor
 These measurements demonstrate a broad statistical mismatch in the analysed feature space. They do not, by themselves, identify a unique physical cause for the domain shift.
 
 ---
-## Repository structure
-
-```text
-Assets/
-`-- esd-jassnet_forward.png          Architecture figure
-
-Codes/
-|-- EXP_H_BUILD/                     EXP_H benchmark construction
-|-- HLS_CMDS_BUILD/                  HLS-CMDS controlled-mixture and fold construction
-|-- MIXED_TUNING/                    Supervised mixed-domain adaptation with source replay
-|-- SSL_MIXED/                       Final semi-supervised ESD-JASSNet pipeline
-|-- DOMAIN_GAP/                      Acoustic domain-gap analyses
-|-- ERROR_ANALYSIS/                  Error analysis and statistical evaluation
-`-- BUILD_HFLUNG_RESPIRATORYTR/      External-dataset preparation and audit scripts
-
-Deliverables/
-|-- DeepLearning_Model/              Representative deep-learning outputs
-`-- NMF_Montoro/                     Representative reconstructed NMF outputs
-
-HLS_CMDS_ALIGNED/
-|-- HS/                              Standalone heart-sound recordings
-|-- LS/                              Standalone lung-sound recordings
-`-- Mix/                             Physical cardiopulmonary mixtures
-```
-
-The scripts under `Codes/` preserve the experimental implementations used
-throughout the thesis. `Codes/SSL_MIXED/` contains the final proposed
-semi-supervised pipeline. The other directories contain dataset construction,
-supervised adaptation, external validation and post-hoc analysis utilities.
-
----
 
 ## Installation
 
