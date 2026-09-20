@@ -38,19 +38,17 @@ from sklearn.metrics import pairwise_distances
 
 
 # ============================================================
-# DEFAULT PATHS - EDIT IF NEEDED
+# REPOSITORY-RELATIVE DEFAULT PATHS
 # ============================================================
 
-DEFAULT_EXPH_DIR = Path(
-    "/nas/home/pcallandrone/DeepLearning/dataset/processed/experiment_H_full_both"
-)
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
-DEFAULT_HLUNG_DIR = Path(
-    "/nas/home/pcallandrone/DeepLearning/dataset/raw/HLung"
+DEFAULT_EXPH_DIR = (
+    REPO_ROOT / "dataset" / "processed" / "experiment_H_full_both"
 )
-
-DEFAULT_OUT_DIR = Path(
-    "/nas/home/pcallandrone/DeepLearning/outputs/domain_gap/HLUNG_vs_EXPH_similarity_audit"
+DEFAULT_HLUNG_DIR = REPO_ROOT / "dataset" / "raw" / "HLung"
+DEFAULT_OUT_DIR = (
+    REPO_ROOT / "outputs" / "domain_gap" / "HLUNG_vs_EXPH_similarity_audit"
 )
 
 

@@ -37,11 +37,11 @@ def add_code_paths(extra_code_root: Optional[str] = None) -> None:
     if extra_code_root:
         candidates.append(Path(extra_code_root))
 
-    # Expected layout: DeepLearning/codes/ERROR_ANALYSIS/this_script.py
+    # Expected layout: <repository>/Codes/ERROR_ANALYSIS/this_script.py
     candidates.extend([
         here.parent,
-        here.parent.parent,                 # DeepLearning/codes
-        here.parent.parent / "SSL_MIXED",   # optional copied subfolder
+        here.parent.parent,                 # Codes/
+        here.parent.parent / "SSL_MIXED",
         here.parent.parent / "src",
     ])
 

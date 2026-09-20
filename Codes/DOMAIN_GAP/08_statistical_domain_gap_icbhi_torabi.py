@@ -116,7 +116,7 @@ def load_and_filter(args: argparse.Namespace) -> Tuple[pd.DataFrame, List[str]]:
     if df.empty:
         raise ValueError("No rows left after filtering. Check domain/source_type/mode arguments.")
 
-    # Optional debug/downsample switch. Keep disabled for final thesis runs.
+    # Optional deterministic per-domain subsampling.
     if args.max_segments_per_domain and args.max_segments_per_domain > 0:
         parts = []
         for d, g in df.groupby("domain", sort=False):
@@ -601,7 +601,12 @@ def main() -> None:
     parser.add_argument("--n-splits", type=int, default=5)
     parser.add_argument("--top-k", type=int, default=20)
     parser.add_argument("--random-state", type=int, default=42)
-    parser.add_argument("--max-segments-per-domain", type=int, default=0, help="Debug only; 0 = disabled")
+    parser.add_argument(
+        "--max-segments-per-domain",
+        type=int,
+        default=0,
+        help="Optional per-domain segment cap; 0 = disabled",
+    )
     args = parser.parse_args()
 
     out_dir = Path(args.out_dir)
