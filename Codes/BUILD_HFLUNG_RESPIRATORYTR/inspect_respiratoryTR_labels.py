@@ -1,54 +1,97 @@
+#!/usr/bin/env python3
+"""Inspect label sheets distributed with RespiratoryDatabase@TR."""
+
+from __future__ import annotations
+
+import argparse
 from pathlib import Path
+
 import pandas as pd
 
-ROOT = Path("/nas/home/pcallandrone/DeepLearning")
-EXTRACT = ROOT / "dataset/raw/respiratoryTR_p9z4h98s6j_v1/extracted"
-LABELS_XLSX = EXTRACT / "Labels.xlsx"
 
-OUT_DIR = ROOT / "outputs/domain_gap/RESPIRATORY_TR_REAL_MIXTURE_AUDIT"
-OUT_DIR.mkdir(parents=True, exist_ok=True)
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
-print("=" * 100)
-print("RESPIRATORY TR LABELS INSPECTION")
-print("=" * 100)
-print("Labels file:", LABELS_XLSX)
-print("Exists:", LABELS_XLSX.exists())
-print()
 
-xls = pd.ExcelFile(LABELS_XLSX)
-print("Sheets:")
-for s in xls.sheet_names:
-    print(" -", s)
-print()
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--labels-xlsx",
+        type=Path,
+        default=(
+            REPO_ROOT
+            / "dataset"
+            / "raw"
+            / "respiratoryTR_p9z4h98s6j_v1"
+            / "extracted"
+            / "Labels.xlsx"
+        ),
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=(
+            REPO_ROOT
+            / "outputs"
+            / "domain_gap"
+            / "RESPIRATORY_TR_REAL_MIXTURE_AUDIT"
+        ),
+    )
+    return parser.parse_args()
 
-for sheet in xls.sheet_names:
+
+def safe_sheet_name(sheet: str) -> str:
+    return "".join(
+        char if char.isalnum() or char in "_-" else "_"
+        for char in sheet
+    )
+
+
+def main() -> None:
+    args = parse_args()
+    labels_xlsx = Path(args.labels_xlsx)
+    out_dir = Path(args.out_dir)
+
+    if not labels_xlsx.exists():
+        raise FileNotFoundError(f"Labels file not found: {labels_xlsx}")
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     print("=" * 100)
-    print("SHEET:", sheet)
+    print("RESPIRATORY TR LABELS INSPECTION")
+    print("=" * 100)
+    print(f"Labels file: {labels_xlsx}")
+
+    workbook = pd.ExcelFile(labels_xlsx)
+
+    print("\nSheets:")
+    for sheet in workbook.sheet_names:
+        print(f" - {sheet}")
+
+    for sheet in workbook.sheet_names:
+        print("\n" + "=" * 100)
+        print(f"SHEET: {sheet}")
+        print("=" * 100)
+
+        df = pd.read_excel(labels_xlsx, sheet_name=sheet)
+
+        print(f"Shape: {df.shape}")
+        print("Columns:")
+        for column in df.columns:
+            print(f" - {column!r}")
+
+        out_csv = out_dir / f"labels_sheet_{safe_sheet_name(sheet)}.csv"
+        df.to_csv(out_csv, index=False)
+
+        print(f"Saved CSV: {out_csv}")
+        print("\nHead:")
+        print(df.head(20).to_string(index=False))
+        print("\nNon-null counts:")
+        print(df.notna().sum().to_string())
+
+    print("\n" + "=" * 100)
+    print("DONE")
     print("=" * 100)
 
-    df = pd.read_excel(LABELS_XLSX, sheet_name=sheet)
 
-    print("Shape:", df.shape)
-    print("Columns:")
-    for c in df.columns:
-        print(" -", repr(c))
-    print()
-
-    out_csv = OUT_DIR / f"labels_sheet_{sheet}.csv"
-    safe_name = "".join(ch if ch.isalnum() or ch in "_-" else "_" for ch in sheet)
-    out_csv = OUT_DIR / f"labels_sheet_{safe_name}.csv"
-    df.to_csv(out_csv, index=False)
-
-    print("Saved CSV:", out_csv)
-    print()
-    print("Head:")
-    print(df.head(20).to_string(index=False))
-    print()
-
-    print("Non-null counts:")
-    print(df.notna().sum().to_string())
-    print()
-
-print("=" * 100)
-print("DONE")
-print("=" * 100)
+if __name__ == "__main__":
+    main()
