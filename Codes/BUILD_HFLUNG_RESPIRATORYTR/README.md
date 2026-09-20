@@ -30,6 +30,8 @@ For example:
 python Codes/BUILD_HFLUNG_RESPIRATORYTR/hflung_quality_score_and_selection_v2.py --help
 python Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_25x25_external_val.py --help
 python Codes/BUILD_HFLUNG_RESPIRATORYTR/build_respiratoryTR_real_mixture_dataset.py --help
-The historical filename source_disjoint_split_smoke.csv is intentionally
+```
+
+The historical filename `source_disjoint_split_smoke.csv` is intentionally
 preserved where required for compatibility with the experimental pipeline; it
 does not indicate that the published analysis is a smoke-test result.
