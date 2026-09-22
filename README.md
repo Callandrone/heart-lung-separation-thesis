@@ -1,6 +1,6 @@
 # Deep Learning for Single-Channel Heart–Lung Sound Separation Across Different Recording Conditions
 
-This repository contains the research code developed for the master's thesis **_Deep_Learning_for_Single-Channel_Heart–Lung_Sound_Separation_Across_Different_Recording_Conditions_** by Pietro Callandrone. The project investigates whether a compact time-domain separator can operate across two acoustically different domains:
+This repository contains the research code developed for the master's thesis **_Deep Learning for Single-Channel Heart–Lung Sound Separation Across Different Recording Conditions_** by Pietro Callandrone. The project investigates whether a compact time-domain separator can operate across two acoustically different domains:
 
 - a controlled source domain built from real-patient heart and lung recordings;
 - a shifted target domain recorded from a clinical manikin.

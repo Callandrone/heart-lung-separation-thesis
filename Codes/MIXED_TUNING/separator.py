@@ -196,7 +196,7 @@ class JointLocalGlobalAttention(nn.Module):
 
     It is used to build
         Q, K   -> local attention
-        Q', K' -> linearised gloabal attention
+        Q', K' -> linearised global attention
     """
 
     def __init__(
