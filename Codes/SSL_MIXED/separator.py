@@ -90,7 +90,7 @@ class ConvolutionModule(nn.Module):
             in_dim,
             out_dim,
             bias=False,
-        ) #Linear Projection, from 128 to 256
+        ) #Linear Projection
 
         self.activation = nn.ReLU() #Non linearity to U and V
 
@@ -176,11 +176,7 @@ class RotaryPositionEmbedding(nn.Module):
 
 
 class ScaleOffsetRotary(nn.Module):
-    """
-    Applica scale, offset e Rotary Positional Embedding alla
-    rappresentazione condivisa Z per ottenere Q, K, Q' e K'.
-    """
-
+    
     def __init__(self, dim: int) -> None:
         super().__init__()
 
@@ -196,7 +192,7 @@ class JointLocalGlobalAttention(nn.Module):
     """
     Joint local-global attention
     Shared representation:
-        Z = ConvM(X'') in R^(S x D), con D << N
+        Z = ConvM(X'') in R^(S x D), with D << N
 
     It is used to build
         Q, K   -> local attention
@@ -315,7 +311,7 @@ class JointLocalGlobalAttention(nn.Module):
         v: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
 
-        #Shared low-dimensional representation:
+        # Shared attention representation:
         z = self.shared_z_conv(x)
 
         #Local Q, K and global Q', K'

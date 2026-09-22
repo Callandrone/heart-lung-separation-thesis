@@ -55,6 +55,7 @@ saved_models/
 
 # Dataset (spesso troppo grandi per git)
 data/
+dataset/
 datasets/
 *.csv
 *.parquet
