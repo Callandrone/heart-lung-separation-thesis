@@ -22,6 +22,7 @@ This uses already extracted CSVs:
 """
 
 import argparse
+import os
 from pathlib import Path
 
 import numpy as np
@@ -30,23 +31,24 @@ import matplotlib.pyplot as plt
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(REPO_ROOT))).expanduser().resolve()
 
 DEFAULT_TORABI_GAP_DIR = (
-    REPO_ROOT
+    PROJECT_ROOT
     / "outputs"
     / "domain_gap"
     / "domain_gap_EXP_H_vs_TORABI_FOLD2"
 )
 
 DEFAULT_HFLUNG_AUDIT_DIR = (
-    REPO_ROOT
+    PROJECT_ROOT
     / "outputs"
     / "domain_gap"
     / "HFLUNG_trend_vs_SELECTED_ICBHI"
 )
 
 DEFAULT_OUT_DIR = (
-    REPO_ROOT
+    PROJECT_ROOT
     / "outputs"
     / "domain_gap"
     / "TORABI_vs_HFLUNG_CLOSE_SUBDOMAINS"

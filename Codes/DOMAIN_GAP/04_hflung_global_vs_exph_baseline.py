@@ -42,13 +42,14 @@ from sklearn.metrics import pairwise_distances
 # ============================================================
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(REPO_ROOT))).expanduser().resolve()
 
 DEFAULT_EXPH_DIR = (
-    REPO_ROOT / "dataset" / "processed" / "experiment_H_full_both"
+    PROJECT_ROOT / "dataset" / "processed" / "experiment_H_full_both"
 )
-DEFAULT_HLUNG_DIR = REPO_ROOT / "dataset" / "raw" / "HLung"
+DEFAULT_HLUNG_DIR = PROJECT_ROOT / "dataset" / "raw" / "HF_Lung_V1"
 DEFAULT_OUT_DIR = (
-    REPO_ROOT / "outputs" / "domain_gap" / "HLUNG_vs_EXPH_similarity_audit"
+    PROJECT_ROOT / "outputs" / "domain_gap" / "HLUNG_vs_EXPH_similarity_audit"
 )
 
 

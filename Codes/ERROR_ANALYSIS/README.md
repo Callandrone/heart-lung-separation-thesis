@@ -8,4 +8,17 @@ This directory contains the post-hoc analyses used to inspect the final separato
 
 The analyses preserve the source-disjoint evaluation protocol and avoid treating overlapping windows derived from the same base recording as statistically independent.
 
-For the white-noise audit, set `ESD_JASSNET_SSL_CHECKPOINT` to the checkpoint to evaluate. Dataset and output locations can optionally be overridden with `HLSCMDS_DATASET_DIR`, `HLSCMDS_SPLIT_CSV`, `HLSCMDS_FOLD` and `ERROR_ANALYSIS_OUT_DIR`.
+For the white-noise audit, set `ESD_JASSNET_SSL_CHECKPOINT` to the checkpoint to evaluate. Dataset and output locations can optionally be overridden with `HLSCMDS_TARGET_DIR`, `HLSCMDS_SPLIT_CSV`, `HLSCMDS_FOLD` and `ERROR_ANALYSIS_OUT_DIR`.
+
+`HLSCMDS_FOLD` selects the physical dataset directory. The noise audit's internal
+split is selected separately by `ESD_JASSNET_SPLIT_FOLD` (default 1).
+`HLSCMDS_DATASET_DIR` remains a lower-priority legacy alias for the dataset path.
+
+The main error analysis accepts `--physical-fold` for custom dataset directory
+names and otherwise infers it from `_fold<N>`. Preserve this column when pooling
+folds: base/sample IDs restart in each physical directory.
+
+Bootstrap defaults to `final_mixed_ssl`, matching the main analysis output.
+Use repeated `--run LABEL=DIRECTORY` and `--baseline LABEL` arguments for comparisons.
+Directories are relative to `--error-root`; historical ablations are not assumed.
+See [reproducibility instructions](../../REPRODUCIBILITY.md) for an example.

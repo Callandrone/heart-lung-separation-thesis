@@ -41,6 +41,7 @@ Example
 -------
 python Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_25x25_external_val.py \
   --project-root . \
+  --hs-selected-csv /path/to/audited_hs_selection.csv \
   --selection top25 \
   --overwrite
 """
@@ -49,6 +50,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 from math import gcd
@@ -62,7 +64,7 @@ from scipy.signal import resample_poly
 from tqdm import tqdm
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(Path(__file__).resolve().parents[2]))).expanduser().resolve()
 TARGET_SR = 4000
 DURATION_SEC = 15.0
 TARGET_LEN = int(TARGET_SR * DURATION_SEC)
@@ -250,8 +252,7 @@ def save_triplet_segment(m_path: Path, h_path: Path, l_path: Path, M: np.ndarray
 
 
 def read_hs_sources(args: argparse.Namespace) -> pd.DataFrame:
-    # If a quality CSV is explicitly passed, prefer it.
-    # Otherwise fall back to the already selected EXP_H manifest when available.
+    # The CLI requires one explicit HS input; the caller supplies an audited selection.
     if args.hs_quality_csv is None and args.hs_selected_csv is not None and Path(args.hs_selected_csv).exists():
         df = pd.read_csv(args.hs_selected_csv)
         path_col = pick_col(df, ["output_path", "fixed_path", "fixed_audio_path", "processed_path", "source_path", "audio_path", "wav_path", "path"], "HS audio path")
@@ -277,7 +278,7 @@ def read_hs_sources(args: argparse.Namespace) -> pd.DataFrame:
         origin = "hs_quality_csv"
 
     df = df.copy()
-    df["resolved_path"] = [resolve_existing_path(x) for x in df[path_col].tolist()]
+    df["resolved_path"] = [resolve_existing_path(x, args.project_root) for x in df[path_col].tolist()]
     df = df[df["resolved_path"].notna()].copy()
     missing = [str(p) for p in df["resolved_path"].tolist() if not Path(p).exists()]
     if missing:
@@ -473,8 +474,8 @@ def write_selected_sources(hs_df: pd.DataFrame, ls_df: pd.DataFrame, selected_ro
 
     hs_manifest = pd.DataFrame(hs_rows)
     ls_manifest = pd.DataFrame(ls_rows)
-    hs_manifest.to_csv(selected_root / "selected_hs_physionet_25.csv", index=False)
-    ls_manifest.to_csv(selected_root / "selected_ls_hflung_25.csv", index=False)
+    hs_manifest.to_csv(selected_root / f"selected_hs_physionet_{len(hs_manifest)}.csv", index=False)
+    ls_manifest.to_csv(selected_root / f"selected_ls_hflung_{len(ls_manifest)}.csv", index=False)
     pd.concat([hs_manifest.assign(modality="HS"), ls_manifest.assign(modality="LS")], ignore_index=True, sort=False).to_csv(
         selected_root / "selected_sources_combined.csv", index=False
     )
@@ -665,7 +666,7 @@ def write_summary(args: argparse.Namespace, selected_root: Path, mix_root: Path,
         raise RuntimeError(f"Segment additivity below 50 dB: {actual['min_segment_additivity_snr_db']}")
 
     lines = []
-    lines.append("HF_Lung selected 25x25 external validation")
+    lines.append(f"HF_Lung selected {args.n_hs}x{args.n_ls} external validation")
     lines.append("=" * 100)
     lines.append("")
     lines.append("Purpose: external synthetic validation only, not training.")
@@ -685,21 +686,37 @@ def write_summary(args: argparse.Namespace, selected_root: Path, mix_root: Path,
         lines.append("HF_Lung selected adventitious distribution:")
         lines.append(str(ls_manifest["has_any_adventitious"].value_counts(dropna=False)))
     lines.append("")
-    lines.append("model_config.py evaluation reminder:")
-    lines.append(f'EXPERIMENT_NAME = "eval_hflung_selected_25x25_mixed_ssl"')
-    lines.append(f'SUPERVISED_DIR = PROJECT_ROOT + "/dataset/processed/{processed_dir.name}"')
-    lines.append('SYNTH_SUPERVISED_DIR = SUPERVISED_DIR')
-    lines.append('USE_SOURCE_DISJOINT_SPLIT = True')
-    lines.append('SOURCE_DISJOINT_SPLIT_CSV = SUPERVISED_DIR + "/source_disjoint_split_smoke.csv"')
-    lines.append('N_FOLDS = 1')
-    lines.append('ONLY_FOLD = 1')
-    lines.append('EVAL_CKPT = CKPT_DIR + "/finetune_fold1_best.pt"  # replace with Mixed NOAUG + SSL fold/checkpoint')
+    lines.append("Evaluation environment variables (use an explicit checkpoint):")
+    lines.append(f"ESD_JASSNET_EVAL_DATA_DIR={processed_dir}")
+    lines.append(f"ESD_JASSNET_EVAL_SPLIT_CSV={processed_dir / 'source_disjoint_split_smoke.csv'}")
+    lines.append("ESD_JASSNET_SPLIT_FOLD=1")
+    lines.append("ESD_JASSNET_EVAL_CKPT=/path/to/finetune_fold1_best.pt")
+    lines.append(f"ESD_JASSNET_EVAL_RESULTS_DIR={Path(args.project_root) / 'outputs' / 'results' / processed_dir.name}")
 
     for p in [selected_root / "summary.txt", mix_root / "summary.txt", processed_dir / "summary.txt"]:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text("\n".join(lines), encoding="utf-8")
     for p in [selected_root / "summary.json", mix_root / "summary.json", processed_dir / "summary.json"]:
         p.write_text(json.dumps(actual, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def check_hs_overlap(args: argparse.Namespace, hs_df: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
+    # Check identifiers and paths before creating or replacing any output audio.
+    # Renamed copies also require the separate waveform-fingerprint audit.
+    from audit_hflung_physionet_hs_leakage import build_source_table, audit_overlap
+    exph_df = pd.read_csv(args.exph_hs_selected_csv)
+    exph_tab = build_source_table(exph_df, "EXP_H_HS", root=Path(args.project_root))
+    if not exph_tab["split"].isin(["train", "val"]).all() or not exph_tab["split"].eq("train").any():
+        raise RuntimeError("EXP_H HS manifest must identify its train and val sources.")
+    ext_tab = build_source_table(hs_df, "HF_Lung_external_HS", root=Path(args.project_root))
+    overlap_rows, overlap_summary = audit_overlap(ext_tab, exph_tab, False, 0.995)
+    if overlap_summary["overlap_train_count"] and not args.allow_exph_train_overlap:
+        raise RuntimeError(
+            "Selected external HS sources overlap EXP_H training. Supply an audited non-training "
+            "selection. For an explicitly LS-only external protocol, use --allow-exph-train-overlap."
+        )
+
+    return overlap_rows, overlap_summary
 
 
 def build(args: argparse.Namespace) -> None:
@@ -711,7 +728,7 @@ def build(args: argparse.Namespace) -> None:
     processed_dir = project_root / "dataset" / "processed" / safe_id(args.out_name).lower()
 
     print("=" * 100)
-    print("BUILDING HF_LUNG SELECTED 25x25 EXTERNAL VALIDATION")
+    print(f"BUILDING HF_LUNG SELECTED {args.n_hs}x{args.n_ls} EXTERNAL VALIDATION")
     print("=" * 100)
     print(f"Project root     : {project_root}")
     print(f"HS quality CSV   : {args.hs_quality_csv}")
@@ -729,6 +746,8 @@ def build(args: argparse.Namespace) -> None:
     hs_df = read_hs_sources(args)
     ls_df = read_hflung_sources(args)
 
+    overlap_rows, overlap_summary = check_hs_overlap(args, hs_df)
+
     print("\nSelected HS sources:")
     print(hs_df[["source_id", "target_class", "source_path"]].head(10).to_string(index=False))
     print("\nSelected HF_Lung LS sources:")
@@ -738,6 +757,12 @@ def build(args: argparse.Namespace) -> None:
     metadata, _split = create_mixtures(hs_manifest, ls_manifest, mix_root, args.snrs, bool(args.overwrite))
     manifest = segment_processed_dataset(mix_root, processed_dir, bool(args.overwrite))
     write_summary(args, selected_root, mix_root, processed_dir, hs_manifest, ls_manifest, metadata, manifest)
+    overlap_summary["allow_exph_train_overlap"] = bool(args.allow_exph_train_overlap)
+    overlap_summary["check_scope"] = "source identifiers and paths; waveform audit is separate"
+    overlap_rows.to_csv(selected_root / "hs_overlap_audit.csv", index=False)
+    (selected_root / "hs_overlap_summary.json").write_text(
+        json.dumps(overlap_summary, indent=2), encoding="utf-8"
+    )
 
     index = {
         "processed_dir": str(processed_dir),
@@ -767,9 +792,12 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--project-root", type=Path, default=PROJECT_ROOT)
 
-    p.add_argument("--hs-quality-csv", type=Path, default=None, help="PhysioNet candidate quality CSV. Used if --hs-selected-csv is missing/unavailable.")
-    p.add_argument("--hs-selected-csv", type=Path, default=None)
-    p.add_argument("--hs-split", type=str, default="all", choices=["all", "train", "val"], help="Filter HS selected manifest by split. Ignored for quality CSV unless split column exists and selected CSV is used.")
+    hs_input = p.add_mutually_exclusive_group(required=True)
+    hs_input.add_argument("--hs-quality-csv", type=Path, help="Explicit PhysioNet candidate quality CSV; audit overlap before building.")
+    hs_input.add_argument("--hs-selected-csv", type=Path, help="Explicit HS selection manifest; no implicit reuse of EXP_H sources.")
+    p.add_argument("--hs-split", type=str, default="all", choices=["all", "train", "val"], help="Filter --hs-selected-csv by its split column. Not applied to --hs-quality-csv.")
+    p.add_argument("--exph-hs-selected-csv", type=Path, default=None, help="EXP_H manifest used to check HS training overlap.")
+    p.add_argument("--allow-exph-train-overlap", action="store_true", help="Explicit LS-only external protocol: allow known EXP_H HS training overlap and record it.")
 
     p.add_argument("--hflung-rank-csv", type=Path, default=None)
     p.add_argument("--hflung-label-csv", type=Path, default=None)
@@ -789,13 +817,8 @@ def parse_args() -> argparse.Namespace:
 
     project_root = Path(args.project_root)
 
-    if args.hs_selected_csv is None:
-        args.hs_selected_csv = (
-            project_root
-            / "dataset"
-            / "EXP_H_FULL_BOTH_SELECTED"
-            / "selected_hs_EXP_H_FULL_BOTH.csv"
-        )
+    if args.exph_hs_selected_csv is None:
+        args.exph_hs_selected_csv = project_root / "dataset" / "EXP_H_FULL_BOTH_SELECTED" / "selected_hs_EXP_H_FULL_BOTH.csv"
 
     if args.hflung_rank_csv is None:
         args.hflung_rank_csv = (

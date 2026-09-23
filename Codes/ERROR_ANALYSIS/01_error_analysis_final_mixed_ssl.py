@@ -943,6 +943,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ckpt", default="", help="Single checkpoint path. Use with --fold.")
     parser.add_argument("--ckpt-dir", default="", help="Checkpoint directory for fold checkpoints.")
     parser.add_argument("--fold", type=int, default=0, help="Fold number for single checkpoint evaluation. 0 means evaluate all data unless split omitted.")
+    parser.add_argument("--physical-fold", type=int, default=None, help="Physical dataset fold; inferred from the dataset directory when possible.")
     parser.add_argument("--n-folds", type=int, default=5, help="Number of folds for --ckpt-dir mode")
     parser.add_argument("--out-dir", default="", help="Output directory for error analysis")
     parser.add_argument("--sr", type=int, default=4000)
@@ -1054,6 +1055,10 @@ def main() -> None:
         raise RuntimeError("No rows evaluated. Check checkpoint paths and dataset split.")
 
     df = pd.DataFrame(all_rows)
+    physical_match = re.search(r"_fold([1-5])$", dataset_dir.name, flags=re.IGNORECASE)
+    physical_fold = args.physical_fold or (int(physical_match.group(1)) if physical_match else None)
+    if physical_fold is not None:
+        df["physical_fold"] = physical_fold
     per_sample_path = dirs["metrics"] / "per_sample_error_metrics.csv"
     df.to_csv(per_sample_path, index=False)
     print(f"Per-sample metrics saved: {per_sample_path}")

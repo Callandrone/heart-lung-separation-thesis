@@ -6,7 +6,11 @@ without editing this file.
 """
 
 import os
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from experiment_config import physical_fold, project_root, target_dir, stage2_checkpoint, pseudo_root
 
 # -----------------------------------------------------------------------------
 # Architecture
@@ -50,28 +54,17 @@ MASK_SCALE = "ReLU_unbounded"
 # By default, use the repository root. Set ESD_JASSNET_ROOT to point to the
 # original experiment root (or another compatible data/output layout).
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(REPO_ROOT))).resolve()
-
-HLSCMDS_FOLD = int(os.environ.get("HLSCMDS_FOLD", "1"))
-if HLSCMDS_FOLD not in {1, 2, 3, 4, 5}:
-    raise ValueError(f"HLSCMDS_FOLD must be one of 1, 2, 3, 4, 5; got {HLSCMDS_FOLD}.")
+PROJECT_ROOT = project_root()
+HLSCMDS_FOLD = physical_fold()
 
 EXPERIMENT_NAME = f"ESD_JASSNET_SSL_FOLD{HLSCMDS_FOLD}"
 CKPT_DIR = str(PROJECT_ROOT / "outputs" / "checkpoints" / EXPERIMENT_NAME)
 RESULTS_DIR = str(PROJECT_ROOT / "outputs" / "results" / EXPERIMENT_NAME)
-EVAL_CKPT = None
+EVAL_CKPT = os.environ.get("ESD_JASSNET_EVAL_CKPT")
+EVAL_SPLIT_FOLD = int(os.environ.get("ESD_JASSNET_SPLIT_FOLD", "1"))
 
-# Controlled HLS-CMDS target-domain dataset for the selected fold.
-# The fallback directory name matches the original experiment layout.
-SUPERVISED_DIR = os.environ.get(
-    "HLSCMDS_TARGET_DIR",
-    str(
-        PROJECT_ROOT
-        / "dataset"
-        / "processed"
-        / f"torabi_full_40x40_10x10_no_unused_fold{HLSCMDS_FOLD}"
-    ),
-)
+# Canonical release path, with discovery of existing historical torabi_* data.
+SUPERVISED_DIR = str(target_dir(PROJECT_ROOT, HLSCMDS_FOLD))
 SOURCE_DISJOINT_SPLIT_CSV = os.environ.get(
     "HLSCMDS_SPLIT_CSV",
     str(Path(SUPERVISED_DIR) / "source_disjoint_split_smoke.csv"),
@@ -94,28 +87,16 @@ REQUIRE_SYNTH_TRAIN_SPLIT = True
 # Stage-2 mixed-fine-tuning checkpoint used to initialise Stage 3.
 # Set this explicitly before training, for example:
 #   ESD_JASSNET_STAGE2_CKPT=/path/to/finetune_fold1_best.pt
-PRETRAIN_CKPT = os.environ.get("ESD_JASSNET_STAGE2_CKPT")
+PRETRAIN_CKPT = str(stage2_checkpoint(PROJECT_ROOT, HLSCMDS_FOLD))
 
 # Confidence-filtered pseudo-label dataset generated from physical V1 mixtures.
 SSL_PSEUDO_DIR = os.environ.get(
     "ESD_JASSNET_SSL_PSEUDO_DIR",
-    str(
-        PROJECT_ROOT
-        / "dataset"
-        / "processed"
-        / "v1_real_ssl_pseudo_from_mixed_noaug"
-        / "confident"
-    ),
+    str(pseudo_root(PROJECT_ROOT, HLSCMDS_FOLD) / "confident"),
 )
 SSL_CONFIDENCE_MANIFEST = os.environ.get(
     "ESD_JASSNET_SSL_MANIFEST",
-    str(
-        PROJECT_ROOT
-        / "dataset"
-        / "processed"
-        / "v1_real_ssl_pseudo_from_mixed_noaug"
-        / "manifest_pseudo_confident.csv"
-    ),
+    str(Path(SSL_PSEUDO_DIR).parent / "manifest_pseudo_confident.csv"),
 )
 
 # Compatibility placeholder used by the training script.
@@ -246,3 +227,12 @@ TARGET_RANDOM_SHARED_GAIN_DB = (-1.5, 1.5)
 APPLY_MIXTURE_POLARITY_CALIBRATION = True
 APPLY_MIXTURE_GAIN_CALIBRATION = True
 EVALUATE_POST_TRAINING = False
+
+# Evaluation paths are configured separately from training inputs.
+EVAL_DATA_DIR = os.environ.get("ESD_JASSNET_EVAL_DATA_DIR", SUPERVISED_DIR)
+EVAL_SPLIT_CSV = os.environ.get(
+    "ESD_JASSNET_EVAL_SPLIT_CSV",
+    str(Path(EVAL_DATA_DIR) / "source_disjoint_split_smoke.csv")
+    if "ESD_JASSNET_EVAL_DATA_DIR" in os.environ else SOURCE_DISJOINT_SPLIT_CSV,
+)
+EVAL_RESULTS_DIR = os.environ.get("ESD_JASSNET_EVAL_RESULTS_DIR", RESULTS_DIR)

@@ -33,7 +33,7 @@ The thesis focuses not only on in-domain separation, but also on domain shift, t
 The project includes:
 
 1. **HLS-CMDS waveform-coherence audit**  
-   Analysis of the physical mixtures and their associated isolated recordings before using them as waveform-level supervision.
+   Analysis of the physical mixtures and their associated isolated recordings before using them as waveform-level supervision. The original coherence-audit implementation is not included in this release.
 
 2. **EXP_H benchmark construction**  
    A controlled, exactly additive and source-disjoint benchmark built from quality-screened PhysioNet 2016 heart sounds and ICBHI 2017 lung sounds.
@@ -88,7 +88,7 @@ Purpose:
 - establish a strong source-domain checkpoint;
 - provide the replay and retention reference for later adaptation stages.
 
-The source-domain checkpoint was trained using the same supervised training implementation used by the adaptation code, with mixed-domain sampling and replay disabled. For this reason, a separate Stage-1 implementation is not duplicated in the repository.
+The source-domain checkpoint uses the supervised training implementation shared with adaptation, with replay disabled. Select `ESD_JASSNET_TRAINING_MODE=stage1` and run `Codes/MIXED_TUNING/train_mixed_source_disjoint.py`. This profile encodes the published settings; the original selection manifests and training environment still need to be recovered. See [reproducibility instructions](REPRODUCIBILITY.md).
 
 ### Stage 2 — Supervised target adaptation with replay
 
@@ -154,7 +154,7 @@ Unless otherwise specified by a baseline-specific protocol, waveforms are:
 
 Controlled mixtures preserve additivity by applying source scaling followed by one shared triplet gain.
 
-The Montoro M7 NMF baseline uses a separate 8 kHz, 7-second, STFT-based processing chain and must therefore be interpreted as a directional classical comparison rather than an identical end-to-end protocol.
+The Montoro M7 NMF baseline implementation is not included in this release. In the thesis it uses a separate 8 kHz, 7-second, STFT-based processing chain and must therefore be interpreted as a directional classical comparison rather than an identical end-to-end protocol.
 
 ---
 
@@ -284,6 +284,8 @@ research-server filesystem.
 The main training pipelines can be configured through variables such as:
 
 - `ESD_JASSNET_ROOT`;
+- `ESD_JASSNET_TRAINING_MODE` (`stage1`, `stage2`, or `target_scratch` in the supervised trainer);
+- `ESD_JASSNET_EVAL_CKPT`, `ESD_JASSNET_EVAL_DATA_DIR`, and `ESD_JASSNET_EVAL_RESULTS_DIR`;
 - `HLSCMDS_FOLD`;
 - `HLSCMDS_TARGET_DIR`;
 - `HLSCMDS_SPLIT_CSV`;
@@ -301,6 +303,8 @@ See the README inside each `Codes/` subdirectory for the corresponding workflow
 and configuration details.
 
 Raw third-party datasets and trained checkpoints are not duplicated in this
-repository unless explicitly included. The repository instead provides the
-dataset-construction, training, adaptation and evaluation code used in the
-thesis.
+repository unless explicitly included. The repository provides a subset of the thesis dataset-construction, training,
+adaptation and evaluation code. It is not a complete archive of the experiments.
+See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for runnable profiles, path precedence,
+external-validation safeguards, verified dependencies and the historical inputs
+and implementations that remain unavailable.

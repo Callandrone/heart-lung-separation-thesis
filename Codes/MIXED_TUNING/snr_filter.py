@@ -1,18 +1,18 @@
 """
 snr_filter.py
 -------------
-Utility per escludere dal dataset le finestre temporalmente non informative,
-identificate dall'analisi completa RMS/SNR.
+Exclude temporally uninformative windows from the dataset,
+as identified by the full RMS/SNR analysis.
 
-Il CSV di analisi contiene soltanto i segmenti originali:
+The analysis CSV contains only original segments:
     M_000028_s000_orig
 
-Durante training e validation possono però esistere anche versioni aumentate:
+Training and validation may also contain augmented versions:
     000028_s000_aug
     000028_s000_aug_...
 
-Se la finestra originale è problematica, vengono escluse anche tutte le
-eventuali versioni augmentate della stessa finestra.
+When an original window is excluded, all augmented versions of that
+window are excluded as well.
 """
 
 import re
@@ -23,9 +23,9 @@ import pandas as pd
 
 def segment_window_key(name_or_sample_id: str) -> str:
     """
-    Converte nomi originali o augmentati nella chiave della stessa finestra.
+    Map original and augmented sample names to the same window key.
 
-    Esempi:
+    Examples:
         M_000028_s000_orig -> 000028_s000
         000028_s000_orig   -> 000028_s000
         000028_s000_aug    -> 000028_s000
@@ -46,8 +46,8 @@ def load_excluded_window_keys(
     threshold_db: float,
 ) -> set[str]:
     """
-    Carica il CSV prodotto dall'analisi completa e restituisce le finestre
-    da escludere quando |SNR locale| supera la soglia impostata.
+    Load the analysis CSV and return windows whose absolute local SNR
+    exceeds the configured threshold.
     """
     path = Path(analysis_csv)
 
@@ -91,7 +91,7 @@ def is_excluded_window(
     name_or_sample_id: str,
     excluded_keys: set[str],
 ) -> bool:
-    """True se il segmento appartiene a una finestra esclusa."""
+    """True when the segment belongs to an excluded window."""
     return segment_window_key(name_or_sample_id) in excluded_keys
 
 
@@ -101,9 +101,9 @@ def filter_dataset_indices(
     excluded_keys: set[str],
 ) -> tuple[list[int], list[int]]:
     """
-    Filtra una lista di indici del TripletDataset.
+    Filter a list of TripletDataset indices.
 
-    Restituisce:
+    Returns:
         kept_indices, removed_indices
     """
     kept_indices = []
@@ -125,8 +125,8 @@ def count_unique_windows(
     indices: list[int],
 ) -> int:
     """
-    Conta le finestre originali uniche rappresentate in una lista di indici.
-    Utile perché train/validation possono contenere orig + augmentations.
+    Count unique original windows represented by a list of indices.
+    Training and validation may contain both original and augmented samples.
     """
     return len({
         segment_window_key(dataset_names[idx])

@@ -67,7 +67,7 @@ EPS = 1e-12
 # Defaults
 # -----------------------------------------------------------------------------
 
-DEFAULT_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(Path(__file__).resolve().parents[2]))).expanduser().resolve()
 DEFAULT_RAW_ROOT = DEFAULT_PROJECT_ROOT / "dataset" / "raw" / "HF_Lung_V1"
 DEFAULT_OUT_DIR = DEFAULT_PROJECT_ROOT / "outputs" / "hflung_v1_quality_selection"
 DEFAULT_PROCESSED_DIR = DEFAULT_PROJECT_ROOT / "dataset" / "processed" / "hflung_v1_selected_70_audit"

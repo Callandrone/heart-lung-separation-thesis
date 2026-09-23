@@ -439,7 +439,7 @@ def check_counts_and_write_summary(variant_name: str, selected_root: Path, mix_r
     lines.append(str(pd.crosstab(ls_manifest.get("expH_origin", "unknown"), ls_manifest["split"])))
     lines.append("")
     lines.append("model_config.py reminder:")
-    lines.append(f'SUPERVISED_DIR = PROJECT_ROOT + "/dataset/processed/{processed_dir.name}"')
+    lines.append(f'SUPERVISED_DIR = str(PROJECT_ROOT / "dataset" / "processed" / "{processed_dir.name}")')
     lines.append("USE_SOURCE_DISJOINT_SPLIT = True")
     lines.append('SOURCE_DISJOINT_SPLIT_CSV = SUPERVISED_DIR + "/source_disjoint_split_smoke.csv"')
     lines.append("N_FOLDS = 1")

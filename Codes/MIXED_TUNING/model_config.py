@@ -6,7 +6,11 @@ through environment variables without editing this file.
 """
 
 import os
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from experiment_config import physical_fold, project_root, target_dir, stage2_checkpoint, pseudo_root
 
 # -----------------------------------------------------------------------------
 # Architecture
@@ -48,30 +52,17 @@ MASK_SCALE = "ReLU_unbounded"
 # Paths
 # -----------------------------------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(REPO_ROOT))).resolve()
-
-HLSCMDS_FOLD = int(os.environ.get("HLSCMDS_FOLD", "1"))
-if HLSCMDS_FOLD not in {1, 2, 3, 4, 5}:
-    raise ValueError(
-        f"HLSCMDS_FOLD must be one of 1, 2, 3, 4, 5; got {HLSCMDS_FOLD}."
-    )
+PROJECT_ROOT = project_root()
+HLSCMDS_FOLD = physical_fold()
 
 EXPERIMENT_NAME = f"ESD_JASSNET_MIXED_FOLD{HLSCMDS_FOLD}"
 CKPT_DIR = str(PROJECT_ROOT / "outputs" / "checkpoints" / EXPERIMENT_NAME)
 RESULTS_DIR = str(PROJECT_ROOT / "outputs" / "results" / EXPERIMENT_NAME)
-EVAL_CKPT = None
+EVAL_CKPT = os.environ.get("ESD_JASSNET_EVAL_CKPT")
+EVAL_SPLIT_FOLD = int(os.environ.get("ESD_JASSNET_SPLIT_FOLD", "1"))
 
-# Controlled HLS-CMDS target-domain dataset for the selected fold.
-# The fallback directory name preserves the original experimental layout.
-SUPERVISED_DIR = os.environ.get(
-    "HLSCMDS_TARGET_DIR",
-    str(
-        PROJECT_ROOT
-        / "dataset"
-        / "processed"
-        / f"torabi_full_40x40_10x10_no_unused_fold{HLSCMDS_FOLD}"
-    ),
-)
+# Canonical release path, with discovery of existing historical torabi_* data.
+SUPERVISED_DIR = str(target_dir(PROJECT_ROOT, HLSCMDS_FOLD))
 SOURCE_DISJOINT_SPLIT_CSV = os.environ.get(
     "HLSCMDS_SPLIT_CSV",
     str(Path(SUPERVISED_DIR) / "source_disjoint_split_smoke.csv"),
@@ -193,3 +184,33 @@ AUGMENT_TARGET_RANDOMIZATION = False
 APPLY_MIXTURE_POLARITY_CALIBRATION = True
 APPLY_MIXTURE_GAIN_CALIBRATION = True
 EVALUATE_POST_TRAINING = False
+
+# Explicit supervised profiles reuse the same trainer and architecture.
+# These encode the published settings, not a recovered historical run manifest.
+TRAINING_MODE = os.environ.get("ESD_JASSNET_TRAINING_MODE", "stage2")
+if TRAINING_MODE not in {"stage1", "stage2", "target_scratch"}:
+    raise ValueError("ESD_JASSNET_TRAINING_MODE must be stage1, stage2, or target_scratch")
+if TRAINING_MODE in {"stage1", "target_scratch"}:
+    STAGE = "supervised_from_scratch"
+    PRETRAIN_CKPT = None
+    MIXED_TRAINING = False
+    FINETUNE_EPOCHS = 30
+    FINETUNE_PATIENCE = 5
+    FINETUNE_LR = FULL_FINETUNE_LR = SEPARATOR_FINETUNE_LR = 1e-4
+    if TRAINING_MODE == "stage1":
+        SUPERVISED_DIR = SYNTH_SUPERVISED_DIR
+        SOURCE_DISJOINT_SPLIT_CSV = SYNTH_SOURCE_DISJOINT_SPLIT_CSV
+        EXPERIMENT_NAME = "EXP_H_FULL_BOTH"
+    else:
+        EXPERIMENT_NAME = f"ESD_JASSNET_SCRATCH_FOLD{HLSCMDS_FOLD}"
+    CKPT_DIR = str(PROJECT_ROOT / "outputs" / "checkpoints" / EXPERIMENT_NAME)
+    RESULTS_DIR = str(PROJECT_ROOT / "outputs" / "results" / EXPERIMENT_NAME)
+
+# Evaluation paths are configured separately from training inputs.
+EVAL_DATA_DIR = os.environ.get("ESD_JASSNET_EVAL_DATA_DIR", SUPERVISED_DIR)
+EVAL_SPLIT_CSV = os.environ.get(
+    "ESD_JASSNET_EVAL_SPLIT_CSV",
+    str(Path(EVAL_DATA_DIR) / "source_disjoint_split_smoke.csv")
+    if "ESD_JASSNET_EVAL_DATA_DIR" in os.environ else SOURCE_DISJOINT_SPLIT_CSV,
+)
+EVAL_RESULTS_DIR = os.environ.get("ESD_JASSNET_EVAL_RESULTS_DIR", RESULTS_DIR)
