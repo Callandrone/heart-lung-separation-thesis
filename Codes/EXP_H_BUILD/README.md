@@ -46,12 +46,12 @@ By default, the scripts look for the historical experiment directory names under
 Example:
 
 ```bash
-python Codes/EXP_H_BUILD/01_build_exp_g_40x40.py \\
-  --project-root /path/to/project \\
-  --exp-e-selected-root /path/to/EXP_E_25x30_SELECTED \\
-  --clustered-csv /path/to/physionet_abnormal_clustered.csv \\
-  --physionet-quality-csv /path/to/physionet_all_candidates_quality.csv \\
-  --icbhi-quality-csv /path/to/icbhi_all_candidates_quality.csv \\
+python Codes/EXP_H_BUILD/01_build_exp_g_40x40.py \
+  --project-root /path/to/project \
+  --exp-e-selected-root /path/to/EXP_E_25x30_SELECTED \
+  --clustered-csv /path/to/physionet_abnormal_clustered.csv \
+  --physionet-quality-csv /path/to/physionet_all_candidates_quality.csv \
+  --icbhi-quality-csv /path/to/icbhi_all_candidates_quality.csv \
   --overwrite
 ```
 
@@ -62,11 +62,11 @@ The resulting source pools contain 40 training HS sources and 40 training LS sou
 Example:
 
 ```bash
-python Codes/EXP_H_BUILD/02_build_exp_h.py \\
-  --project-root /path/to/project \\
-  --base-selected-root /path/to/EXP_G_40x40_SELECTED \\
-  --clustered-csv /path/to/physionet_abnormal_clustered.csv \\
-  --icbhi-quality-csv /path/to/icbhi_all_candidates_quality.csv \\
+python Codes/EXP_H_BUILD/02_build_exp_h.py \
+  --project-root /path/to/project \
+  --base-selected-root /path/to/EXP_G_40x40_SELECTED \
+  --clustered-csv /path/to/physionet_abnormal_clustered.csv \
+  --icbhi-quality-csv /path/to/icbhi_all_candidates_quality.csv \
   --overwrite
 ```
 
@@ -101,3 +101,11 @@ The builders preserve the source selection and waveform-construction logic of th
 
 The environment variable `ESD_JASSNET_ROOT` can be used as the default project root. Command-line paths take precedence when explicitly supplied.
 
+
+The original EXP_E manifests and quality/cluster tables are not bundled, and their
+upstream preparation scripts are also absent. Raw dataset downloads alone are
+insufficient to reconstruct this frozen benchmark. See the outstanding-input
+inventory in [REPRODUCIBILITY.md](../../REPRODUCIBILITY.md).
+After recovering inputs and building EXP_H, use the supervised `stage1` training
+profile documented there. These release defaults are not a recovered historical
+run configuration.

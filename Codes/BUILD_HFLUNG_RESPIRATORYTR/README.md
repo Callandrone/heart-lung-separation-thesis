@@ -35,3 +35,21 @@ python Codes/BUILD_HFLUNG_RESPIRATORYTR/build_respiratoryTR_real_mixture_dataset
 The historical filename `source_disjoint_split_smoke.csv` is intentionally
 preserved where required for compatibility with the experimental pipeline; it
 does not indicate that the published analysis is a smoke-test result.
+
+## External validation protocol
+
+The builder requires exactly one explicit `--hs-selected-csv` or `--hs-quality-csv`.
+It checks source identifiers and paths against the EXP_H HS manifest supplied
+through `--exph-hs-selected-csv` (default: the final EXP_H selected manifest).
+Detected training overlap stops the build before output audio is written.
+`--allow-exph-train-overlap` is reserved for an explicitly LS-only external
+protocol and is recorded in the output audit. Run the standalone waveform audit
+to check renamed copies as well; an identifier check does not prove independence.
+
+Builder and leakage-audit defaults both refer to 25?25. The builder uses
+similarity-ranked lung recordings from the domain-gap workflow; the balanced
+quality-selection utility is a separate coverage-analysis workflow.
+The exact historical selection remains unavailable.
+
+Generated summaries list the supported evaluation environment variables.
+See [the full external-validation instructions](../../REPRODUCIBILITY.md).

@@ -10,6 +10,7 @@ not for supervised SI-SDR validation.
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import re
 from pathlib import Path
@@ -21,6 +22,7 @@ from tqdm import tqdm
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(REPO_ROOT))).expanduser().resolve()
 
 
 def peak_normalise(x: np.ndarray, peak: float = 0.95, eps: float = 1e-8) -> np.ndarray:
@@ -84,7 +86,7 @@ def main() -> None:
         "--extract-root",
         type=Path,
         default=(
-            REPO_ROOT
+            PROJECT_ROOT
             / "dataset"
             / "raw"
             / "respiratoryTR_p9z4h98s6j_v1"
@@ -96,7 +98,7 @@ def main() -> None:
         "--out-dir",
         type=Path,
         default=(
-            REPO_ROOT
+            PROJECT_ROOT
             / "dataset"
             / "processed"
             / "respiratoryTR_real_mixture_audit"

@@ -13,7 +13,7 @@ The resulting checkpoints are used as teachers and initialisation points for the
 - `decoder.py` — shared waveform decoder;
 - `model_config.py` — architecture, optimisation and path configuration;
 - `train_mixed_source_disjoint.py` — Stage-2 mixed-domain adaptation procedure;
-- `train_disjoint.py` — shared supervised training utilities used by the mixed-domain pipeline;
+- `train_disjoint.py` — historical supervised trainer, also used for dataset helpers by the evaluator;
 - `evaluate_polarity_control.py` — source-level evaluation and mixture-informed inference calibration;
 - `normalization.py` — global layer normalisation for intermediate feature tensors;
 - `snr_filter.py` — dataset filtering utilities.
@@ -71,6 +71,7 @@ Example on Windows PowerShell:
 
 ```powershell
 $env:HLSCMDS_FOLD = "1"
+$env:ESD_JASSNET_TRAINING_MODE = "stage2"
 $env:ESD_JASSNET_STAGE1_CKPT = "D:\path\to\scratch_fold1_best.pt"
 
 python .\Codes\MIXED_TUNING\train_mixed_source_disjoint.py
@@ -87,3 +88,20 @@ python .\Codes\MIXED_TUNING\evaluate_polarity_control.py
 ```
 
 Evaluation can apply the deterministic mixture-informed polarity and gain calibration described in the thesis.
+
+## Source and scratch profiles
+
+Use `ESD_JASSNET_TRAINING_MODE=stage1` for supervised EXP_H training or
+`target_scratch` for the controlled HLS-CMDS scratch reference. Both use 30 epochs,
+learning rate `1e-4`, patience 5 and no replay. Restore `stage2` before adaptation.
+The Stage-1 profile produces the default checkpoint consumed by Stage 2.
+
+Canonical dataset directories begin with `hlscmds_`; existing `torabi_` directories
+are discovered as a fallback. `HLSCMDS_FOLD` selects a physical dataset directory;
+its split CSV still uses internal `fold_no=1`.
+
+For explicit checkpoint evaluation, set `ESD_JASSNET_EVAL_CKPT`. External data,
+split and results locations use `ESD_JASSNET_EVAL_DATA_DIR`,
+`ESD_JASSNET_EVAL_SPLIT_CSV` and `ESD_JASSNET_EVAL_RESULTS_DIR`.
+Single-checkpoint evaluation retains only validation samples.
+See [the complete workflow](../../REPRODUCIBILITY.md) for prerequisites and limitations.

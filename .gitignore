@@ -31,7 +31,7 @@ env/
 .venv/
 ENV/
 
-# Distribuzione / build
+# Distribution / build
 build/
 dist/
 *.egg-info/
@@ -41,7 +41,7 @@ dist/
 # ======================
 # Deep Learning / ML
 # ======================
-# Modelli e checkpoint
+# Models and checkpoints
 *.pt
 *.pth
 *.ckpt
@@ -53,7 +53,7 @@ runs/
 outputs/
 saved_models/
 
-# Dataset (spesso troppo grandi per git)
+# Datasets (often too large for Git)
 data/
 dataset/
 datasets/
@@ -63,7 +63,7 @@ datasets/
 *.hdf5
 *.tfrecord
 
-# Log e metriche
+# Logs and metrics
 logs/
 *.log
 wandb/
@@ -78,7 +78,7 @@ tensorboard/
 *.ipynb_checkpoints
 
 # ======================
-# Sistema operativo
+# Operating system
 # ======================
 # macOS
 .DS_Store
@@ -94,7 +94,7 @@ desktop.ini
 *~
 
 # ======================
-# Variabili d'ambiente
+# Environment variables
 # ======================
 .env
 .env.local
@@ -110,3 +110,7 @@ desktop.ini
 tmp/
 temp/
 *.zip
+
+# Small, curated reproducibility manifests can be versioned here.
+!reproducibility/manifests/
+!reproducibility/manifests/**/*.csv

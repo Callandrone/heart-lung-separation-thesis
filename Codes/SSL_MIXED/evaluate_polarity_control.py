@@ -1861,8 +1861,8 @@ def resolve_fold_checkpoint(
     fold_num = fold_idx + 1
 
     candidates = [
-        os.path.join(ckpt_dir, f"scratch_fold{fold_num}_best.pt"),
         os.path.join(ckpt_dir, f"finetune_fold{fold_num}_best.pt"),
+        os.path.join(ckpt_dir, f"scratch_fold{fold_num}_best.pt"),
     ]
 
     for path in candidates:
@@ -2283,28 +2283,18 @@ def save_per_snr_summary(
 
 def get_triplet_dataset_class():
     """
-    Import TripletDataset from train_disjoint when available.
-    Falls back to train.py for old experiments.
+    Import the Stage-3 dataset implementation.
     """
-    try:
-        from train_mixed_source_disjoint import TripletDataset
-        return TripletDataset
-    except Exception:
-        from train_mixed_ssl_source_disjoint import TripletDataset
-        return TripletDataset
+    from train_mixed_ssl_source_disjoint import TripletDataset
+    return TripletDataset
 
 
 def get_base_triplet_ids_func():
     """
-    Import get_base_triplet_ids from train_disjoint when available.
-    Falls back to train.py for old experiments.
+    Import the Stage-3 base-recording ID helper.
     """
-    try:
-        from train_mixed_source_disjoint import get_base_triplet_ids
-        return get_base_triplet_ids
-    except Exception:
-        from train_mixed_ssl_source_disjoint import get_base_triplet_ids
-        return get_base_triplet_ids
+    from train_mixed_ssl_source_disjoint import get_base_triplet_ids
+    return get_base_triplet_ids
 
 
 def evaluate_all_folds(
@@ -2336,10 +2326,6 @@ def evaluate_all_folds(
         print("SOURCE-DISJOINT EVALUATION ENABLED")
         print("=" * 80)
         print(f"Split CSV: {split_csv}")
-        print(
-            "Expected all-SNR source-disjoint fold size: "
-            "600 validation base triplets -> 16200  validation segments"
-        )
         print("=" * 80)
         print()
 
@@ -2482,9 +2468,6 @@ def evaluate_all_folds(
             f"removed extreme windows={len(removed_test_names)}"
         )
 
-        if use_source_disjoint and len(test_names_before_filter) != 16200 :
-            print(f"look")
-
         model = load_model(
             ckpt_path,
             T=args.seg_samples,
@@ -2560,11 +2543,19 @@ def evaluate_single_ckpt(
             threshold_db=cfg.LOCAL_SNR_THRESHOLD_DB,
         )
 
+    val_bases = None
+    if args.use_source_disjoint_split:
+        val_bases = load_source_disjoint_val_bases(
+            args.source_disjoint_split_csv,
+            fold_no=int(getattr(cfg, "EVAL_SPLIT_FOLD", 1)),
+        )
     test_names_before_filter = [
-        name
-        for name in dataset.names
+        name for name in dataset.names
         if name.endswith("_orig")
+        and (val_bases is None or sample_name_to_base_id(name) in val_bases)
     ]
+    if not test_names_before_filter:
+        raise RuntimeError("No original validation segments match the evaluation split.")
 
     test_names = [
         name
@@ -2648,11 +2639,11 @@ def evaluate_single_ckpt(
 #Config
 
 class Config:
-    ckpt = None
+    ckpt = getattr(cfg, "EVAL_CKPT", None)
     ckpt_dir = cfg.CKPT_DIR
-    test_dir = cfg.SUPERVISED_DIR
+    test_dir = getattr(cfg, "EVAL_DATA_DIR", cfg.SUPERVISED_DIR)
 
-    out_dir = cfg.RESULTS_DIR
+    out_dir = getattr(cfg, "EVAL_RESULTS_DIR", cfg.RESULTS_DIR)
     apply_mixture_polarity_calibration = bool(
         getattr(cfg, "APPLY_MIXTURE_POLARITY_CALIBRATION", False)
     )
@@ -2667,8 +2658,8 @@ class Config:
 
     source_disjoint_split_csv = getattr(
         cfg,
-        "SOURCE_DISJOINT_SPLIT_CSV",
-        "",
+        "EVAL_SPLIT_CSV",
+        getattr(cfg, "SOURCE_DISJOINT_SPLIT_CSV", ""),
     )
     model_name = (
         "Evaluation of the run "

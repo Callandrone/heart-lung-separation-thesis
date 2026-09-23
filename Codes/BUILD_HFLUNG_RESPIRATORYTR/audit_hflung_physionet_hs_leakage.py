@@ -23,6 +23,7 @@ It does NOT modify any dataset by itself.
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import re
 from math import gcd
@@ -42,6 +43,7 @@ EPS = 1e-10
 AUDIO_EXTS = {".wav", ".flac", ".aif", ".aiff"}
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(REPO_ROOT))).expanduser().resolve()
 
 PATH_COL_CANDIDATES = [
     "resolved_path", "resolved_audio_path", "output_path", "fixed_path", "fixed_audio_path",
@@ -488,8 +490,8 @@ def create_candidate_csv(
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
-    p.add_argument("--project-root", type=Path, default=REPO_ROOT)
-    p.add_argument("--external-selected-root", type=Path, default=None, help="Root like dataset/HFLUNG_SELECTED_20X20_EXTERNAL_VAL_SELECTED")
+    p.add_argument("--project-root", type=Path, default=PROJECT_ROOT)
+    p.add_argument("--external-selected-root", type=Path, default=None, help="Root like dataset/HFLUNG_SELECTED_25X25_EXTERNAL_VAL_SELECTED")
     p.add_argument("--external-hs-csv", type=Path, default=None, help="Explicit selected_hs_physionet*.csv")
     p.add_argument("--exph-hs-selected-csv", type=Path, default=None, help="EXP_H selected_hs_EXP_H_FULL_BOTH.csv")
     p.add_argument("--physionet-quality-csv", type=Path, default=None, help="PhysioNet quality CSV, needed only to create replacement HS CSV")
@@ -507,9 +509,9 @@ def main() -> None:
     args = parse_args()
     project_root = Path(args.project_root)
 
-    external_selected_root = args.external_selected_root or (project_root / "dataset" / "HFLUNG_SELECTED_20X20_EXTERNAL_VAL_SELECTED")
+    external_selected_root = args.external_selected_root or (project_root / "dataset" / "HFLUNG_SELECTED_25X25_EXTERNAL_VAL_SELECTED")
     exph_hs_csv = args.exph_hs_selected_csv or (project_root / "dataset" / "EXP_H_FULL_BOTH_SELECTED" / "selected_hs_EXP_H_FULL_BOTH.csv")
-    out_dir = args.out_dir or (project_root / "outputs" / "domain_gap" / "HFLUNG_PHYSIONET_20X20_HS_LEAKAGE_AUDIT")
+    out_dir = args.out_dir or (project_root / "outputs" / "domain_gap" / "HFLUNG_PHYSIONET_25X25_HS_LEAKAGE_AUDIT")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     external_hs_csv = find_external_hs_csv(external_selected_root, args.external_hs_csv)
@@ -527,8 +529,8 @@ def main() -> None:
     ext_df = read_csv(external_hs_csv)
     exph_df = read_csv(exph_hs_csv)
 
-    ext_tab = build_source_table(ext_df, name="HF_Lung_external_HS")
-    exph_tab = build_source_table(exph_df, name="EXP_H_HS")
+    ext_tab = build_source_table(ext_df, name="HF_Lung_external_HS", root=project_root)
+    exph_tab = build_source_table(exph_df, name="EXP_H_HS", root=project_root)
 
     ext_tab.to_csv(out_dir / "external_hs_source_table.csv", index=False)
     exph_tab.to_csv(out_dir / "exph_hs_source_table.csv", index=False)

@@ -13,7 +13,7 @@ Teacher:
     Stage-2 mixed-domain checkpoint (original experiment directory supported for backward compatibility).
 
 Output:
-    PROJECT_ROOT/dataset/processed/v1_real_ssl_pseudo_from_mixed_noaug/
+    PROJECT_ROOT/dataset/processed/v1_real_ssl_pseudo_fold<N>/
         all/
             M_*.wav
             H_*.wav
@@ -35,7 +35,7 @@ Methodological choice:
 - Mixture-informed polarity/gain calibration is input-only: it uses M and H_hat+L_hat,
   never true H/L references.
 - A conservative input-only confidence filter is applied. The 'confident' folder is the
-  one to use for the next SSL student training pilot.
+  one to use for the Stage-3 student training.
 
 Default run:
     python 02_generate_v1_ssl_pseudo_labels.py --overwrite
@@ -67,11 +67,14 @@ import torch.nn as nn
 from tqdm import tqdm
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from experiment_config import physical_fold, project_root, pseudo_root, stage2_checkpoint
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
-PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(REPO_ROOT))).expanduser().resolve()
+PROJECT_ROOT = project_root()
 DEFAULT_M1_DIR = PROJECT_ROOT / "dataset" / "processed" / "M1_segmented_only"
-DEFAULT_OUT_DIR = PROJECT_ROOT / "dataset" / "processed" / "v1_real_ssl_pseudo_from_mixed_noaug"
-DEFAULT_TEACHER_EXPERIMENT = "EXP_H_FULL_TO_TORABI_FOLD2_MIXED_REPLAY005_NOAUG"
+DEFAULT_OUT_DIR = pseudo_root(PROJECT_ROOT, physical_fold())
+DEFAULT_TEACHER_EXPERIMENT = f"ESD_JASSNET_MIXED_FOLD{physical_fold()}"
 TARGET_SR = 4000
 SEG_SAMPLES = 8000
 WAV_SUBTYPE = "FLOAT"
@@ -717,7 +720,7 @@ def generate_pseudo_labels(args: argparse.Namespace) -> Dict[str, object]:
         "=" * 88,
         json.dumps(summary, indent=2, sort_keys=True, default=str),
         "",
-        "Recommended dataset for the SSL student pilot:",
+        "Recommended dataset for the Stage-3 student:",
         str(confident_dir),
         "",
         "Important:",
@@ -737,10 +740,10 @@ def generate_pseudo_labels(args: argparse.Namespace) -> Dict[str, object]:
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Generate SSL pseudo-labels from M1_segmented_only using the Stage-2 teacher.")
     p.add_argument("--project-root", type=Path, default=PROJECT_ROOT)
-    p.add_argument("--m1-dir", type=Path, default=DEFAULT_M1_DIR)
-    p.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
+    p.add_argument("--m1-dir", type=Path, default=None)
+    p.add_argument("--out-dir", type=Path, default=None)
     p.add_argument("--model-code-dir", type=Path, default=None)
-    p.add_argument("--teacher-experiment", type=str, default=DEFAULT_TEACHER_EXPERIMENT)
+    p.add_argument("--teacher-experiment", type=str, default=None)
     p.add_argument("--teacher-ckpt", type=Path, default=None)
 
     p.add_argument("--sr", type=int, default=TARGET_SR)
@@ -763,7 +766,14 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument("--save-rejected-triplets", action="store_true", help="Also write rejected M/H/L triplets to out_dir/rejected.")
     p.add_argument("--overwrite", action="store_true")
-    return p.parse_args()
+    args = p.parse_args()
+    args.project_root = args.project_root.expanduser().resolve()
+    args.m1_dir = args.m1_dir or args.project_root / "dataset" / "processed" / "M1_segmented_only"
+    args.out_dir = args.out_dir or pseudo_root(args.project_root, physical_fold())
+    if args.teacher_ckpt is None and args.teacher_experiment is None:
+        args.teacher_ckpt = stage2_checkpoint(args.project_root, physical_fold())
+    args.teacher_experiment = args.teacher_experiment or DEFAULT_TEACHER_EXPERIMENT
+    return args
 
 
 def main() -> None:

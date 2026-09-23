@@ -682,13 +682,13 @@ class TripletDataset(Dataset):
 
 class SSLPseudoTripletDataset(TripletDataset):
     """
-    Dataset per V1 SSL pseudo-labels.
+    Dataset of V1 SSL pseudo-labels.
 
-    Restituisce:
+    Returns:
         M, H_pseudo, L_pseudo, w_conf
 
-    Le pseudo-label NON sono ground truth.
-    w_conf serve solo per pesare il contributo del sample nella loss SSL.
+    Pseudo-labels are not ground truth.
+    w_conf weights each sample contribution to the SSL loss.
     """
 
     def __init__(
@@ -709,7 +709,7 @@ class SSLPseudoTripletDataset(TripletDataset):
                 name = str(row.get("name", "")).strip()
 
                 if not name:
-                    # fallback dai path
+                    # Fall back to the path fields.
                     p = str(row.get("m_pseudo_path", row.get("m_path", "")))
                     if p:
                         name = Path(p).stem
@@ -722,8 +722,14 @@ class SSLPseudoTripletDataset(TripletDataset):
                 self.weights_by_name[name] = self._compute_conf_weight(row)
 
         else:
-            print(f"[WARNING] SSL confidence manifest not found: {manifest_csv}")
-            print("[WARNING] all SSL pseudo samples will use w_conf=1.0")
+            raise FileNotFoundError(f"SSL confidence weighting requires its manifest: {manifest_csv}")
+
+        missing_names = set(self.names) - set(self.weights_by_name)
+        if missing_names:
+            raise RuntimeError(
+                f"SSL confidence manifest is missing {len(missing_names)} dataset samples; "
+                f"examples: {sorted(missing_names)[:5]}"
+            )
 
     def _linear_score(self, value, bad, good, higher_is_better=True):
         try:
@@ -949,7 +955,7 @@ class TargetRandomizationDataset(Dataset):
     """
     Training-only mild randomization for the Torabi target domain.
 
-    This is deliberately different from the failed V1/V2/V3 manual filters:
+    This optional augmentation uses the following constraints:
     - it is stochastic, not a fixed ICBHI-style preprocessing;
     - it is applied only to train batches;
     - validation/test remain clean Torabi;
@@ -1747,7 +1753,7 @@ def validate(
 
 
 ############################################
-# Mixed synthetic replay + clean V2 training
+# EXP_H replay + controlled HLS-CMDS training
 ############################################
 
 def _next_cycled_batch(loader: DataLoader, iterator):
@@ -1763,7 +1769,7 @@ def _next_cycled_batch(loader: DataLoader, iterator):
 
 def get_mixed_v2_probability(epoch_idx: int) -> float:
     """
-    Decide how often an optimisation step should use a clean-V2 batch.
+    Decide how often an optimisation step should use a controlled HLS-CMDS batch.
 
     If MIXED_USE_CURRICULUM=True, the probability is read from
     MIXED_CURRICULUM, e.g. ((0, 0.25), (3, 0.50), (8, 0.75)).
@@ -2248,7 +2254,7 @@ def load_pretrained_weights(model: nn.Module, ckpt_path: str, device: torch.devi
     return ckpt
 
 ########################################################
-#Stage 2 — Fine-tuning from pretrained checkpoint
+#Stage 3 — SSL refinement from the Stage-2 checkpoint
 ########################################################
 
 def run_finetune(
@@ -2259,7 +2265,7 @@ def run_finetune(
 ) -> dict:
 
     print("\n" + "=" * 60)
-    print("STAGE 2 — Fine-tuning on supervised triplets")
+    print("STAGE 3 — Mixed supervised and SSL refinement")
     print("=" * 60)
 
     dataset = TripletDataset(

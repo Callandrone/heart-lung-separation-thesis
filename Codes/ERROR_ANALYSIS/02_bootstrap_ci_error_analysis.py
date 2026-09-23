@@ -26,6 +26,7 @@ Reason:
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import re
 import numpy as np
@@ -33,7 +34,8 @@ import pandas as pd
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_ERROR_ROOT = REPO_ROOT / "outputs" / "results" / "ERROR_ANALYSIS"
+PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(REPO_ROOT))).expanduser().resolve()
+DEFAULT_ERROR_ROOT = PROJECT_ROOT / "outputs" / "results" / "ERROR_ANALYSIS"
 DEFAULT_OUT_DIR = DEFAULT_ERROR_ROOT / "bootstrap_ci_final_ssl"
 
 
@@ -41,13 +43,7 @@ DEFAULT_OUT_DIR = DEFAULT_ERROR_ROOT / "bootstrap_ci_final_ssl"
 # Runs to compare
 # ---------------------------------------------------------------------
 
-RUN_DIRS = {
-    "SSL_baseline": "final_ssl_fold2",
-    "T10_W15": "frozen_ablation_ssl_weighted_source_fold2_T10_W15",
-    "T10_W2": "frozen_ablation_ssl_weighted_source_fold2_T10_W2",
-    "T8_W15": "frozen_ablation_ssl_weighted_source_fold2_T8_W15",
-    "T8_W2": "frozen_ablation_ssl_weighted_source_fold2_T8_W2",
-}
+RUN_DIRS = {"SSL_baseline": "final_mixed_ssl"}
 
 BASELINE_NAME = "SSL_baseline"
 
@@ -98,6 +94,16 @@ def load_run_csv(error_root: Path, run_label: str, run_dir: str) -> pd.DataFrame
     df["run"] = run_label
     df["base_id"] = df["base_id"].astype(str)
     df["sample_id"] = df["sample_id"].astype(str)
+    # Base/sample IDs restart in each physical fold directory.
+    fold_col = "physical_fold" if "physical_fold" in df.columns else "fold" if "fold" in df.columns else None
+    if fold_col:
+        if df[fold_col].isna().any():
+            raise ValueError(f"{path}: missing fold labels")
+        prefix = pd.to_numeric(df[fold_col], errors="raise").astype(int).astype(str) + ":"
+        df["base_id"] = prefix + df["base_id"]
+        df["sample_id"] = prefix + df["sample_id"]
+    if df["sample_id"].duplicated().any():
+        raise ValueError(f"{path}: duplicate sample IDs; supply physical_fold for pooled folds")
 
     return df
 
@@ -237,7 +243,7 @@ def bootstrap_paired_delta_ci(
     b[metric] = pd.to_numeric(b[metric], errors="coerce")
     r[metric] = pd.to_numeric(r[metric], errors="coerce")
 
-    merged = b.merge(r, on="sample_id", suffixes=("_baseline", "_run"))
+    merged = b.merge(r, on="sample_id", suffixes=("_baseline", "_run"), validate="one_to_one")
     merged = merged.dropna(subset=[f"{metric}_baseline", f"{metric}_run"])
 
     if merged.empty:
@@ -445,6 +451,9 @@ def main() -> None:
         default=str(DEFAULT_OUT_DIR),
         help="Output folder for bootstrap CSVs.",
     )
+    parser.add_argument("--run", action="append", default=[], metavar="LABEL=DIRECTORY",
+                        help="Repeat to select runs relative to --error-root; replaces defaults.")
+    parser.add_argument("--baseline", default=BASELINE_NAME, help="Baseline label for paired comparisons.")
     parser.add_argument("--n-boot", type=int, default=10000)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
@@ -455,17 +464,27 @@ def main() -> None:
 
     print(f"Loading runs from: {error_root}")
 
+    run_dirs = dict(RUN_DIRS)
+    if args.run:
+        run_dirs = {}
+        for item in args.run:
+            label, sep, directory = item.partition("=")
+            if not sep or not label or not directory or label in run_dirs:
+                parser.error("--run requires unique LABEL=DIRECTORY entries")
+            run_dirs[label] = directory
     runs = {}
-    for run_label, run_dir in RUN_DIRS.items():
+    for run_label, run_dir in run_dirs.items():
         try:
             df = load_run_csv(error_root, run_label, run_dir)
             runs[run_label] = df
             print(f"[OK] {run_label}: {len(df)} rows, {df['base_id'].nunique()} base_id")
         except FileNotFoundError as e:
+            if args.run:
+                raise
             print(f"[SKIP] {e}")
 
-    if BASELINE_NAME not in runs:
-        raise RuntimeError(f"Baseline run not found: {BASELINE_NAME}")
+    if args.baseline not in runs:
+        raise RuntimeError(f"Baseline run not found: {args.baseline}")
 
     print("Computing global metric CIs...")
     global_ci = compute_metric_ci_table(
@@ -505,7 +524,7 @@ def main() -> None:
     print("Computing paired deltas vs SSL baseline...")
     delta_global = compute_delta_table(
         runs,
-        baseline_name=BASELINE_NAME,
+        baseline_name=args.baseline,
         n_boot=args.n_boot,
         seed=args.seed,
         group_col=None,
@@ -514,7 +533,7 @@ def main() -> None:
 
     delta_snr = compute_delta_table(
         runs,
-        baseline_name=BASELINE_NAME,
+        baseline_name=args.baseline,
         n_boot=args.n_boot,
         seed=args.seed,
         group_col="snr_label",
@@ -523,7 +542,7 @@ def main() -> None:
 
     delta_local = compute_delta_table(
         runs,
-        baseline_name=BASELINE_NAME,
+        baseline_name=args.baseline,
         n_boot=args.n_boot,
         seed=args.seed,
         group_col="local_snr_bin",

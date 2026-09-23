@@ -26,6 +26,7 @@ HF_Lung labels are event-level sound annotations, not patient-level diagnoses.
 """
 
 import argparse
+import os
 import re
 from pathlib import Path
 
@@ -33,23 +34,24 @@ import pandas as pd
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(REPO_ROOT))).expanduser().resolve()
 
 DEFAULT_AUDIT_DIR = (
-    REPO_ROOT
+    PROJECT_ROOT
     / "outputs"
     / "domain_gap"
     / "HFLUNG_trend_vs_SELECTED_ICBHI"
 )
 
 DEFAULT_HFLUNG_ROOT = (
-    REPO_ROOT
+    PROJECT_ROOT
     / "dataset"
     / "raw"
     / "HF_Lung_V1"
 )
 
 DEFAULT_OUT_DIR = (
-    REPO_ROOT
+    PROJECT_ROOT
     / "outputs"
     / "domain_gap"
     / "HFLUNG_SELECTED_LABEL_SUMMARY"

@@ -53,51 +53,23 @@ import matplotlib.pyplot as plt
 # RUNTIME CONFIGURATION
 # =============================================================================
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from experiment_config import physical_fold, project_root, target_dir
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
-
-ERROR_ANALYSIS_SCRIPT = Path(__file__).resolve().with_name(
-    "01_error_analysis_final_mixed_ssl.py"
-)
-
-DATASET_DIR = Path(
-    os.environ.get(
-        "HLSCMDS_DATASET_DIR",
-        str(
-            REPO_ROOT
-            / "dataset"
-            / "processed"
-            / "torabi_full_40x40_10x10_no_unused_fold2"
-        ),
-    )
-)
-
-SPLIT_CSV = Path(
-    os.environ.get(
-        "HLSCMDS_SPLIT_CSV",
-        str(DATASET_DIR / "source_disjoint_split_smoke.csv"),
-    )
-)
-
-_ckpt_env = os.environ.get("ESD_JASSNET_SSL_CHECKPOINT")
-CKPT: Optional[Path] = (
-    Path(_ckpt_env).expanduser() if _ckpt_env else None
-)
-
-OUT_DIR = Path(
-    os.environ.get(
-        "ERROR_ANALYSIS_OUT_DIR",
-        str(
-            REPO_ROOT
-            / "outputs"
-            / "results"
-            / "ERROR_ANALYSIS"
-            / "white_noise_robustness_final_ssl_fold2"
-        ),
-    )
-)
-
-# The historical Fold-2 export uses fold label 1 in this evaluation setup.
-FOLD = int(os.environ.get("HLSCMDS_FOLD", "1"))
+PROJECT_ROOT = project_root()
+PHYSICAL_FOLD = physical_fold()
+ERROR_ANALYSIS_SCRIPT = Path(__file__).resolve().with_name("01_error_analysis_final_mixed_ssl.py")
+DATASET_DIR = target_dir(PROJECT_ROOT, PHYSICAL_FOLD)
+SPLIT_CSV = Path(os.environ.get("HLSCMDS_SPLIT_CSV", str(DATASET_DIR / "source_disjoint_split_smoke.csv")))
+_ckpt_env = os.environ.get("ESD_JASSNET_SSL_CHECKPOINT") or os.environ.get("ESD_JASSNET_EVAL_CKPT")
+CKPT: Optional[Path] = Path(_ckpt_env).expanduser() if _ckpt_env else None
+OUT_DIR = Path(os.environ.get(
+    "ERROR_ANALYSIS_OUT_DIR",
+    str(PROJECT_ROOT / "outputs" / "results" / "ERROR_ANALYSIS" / f"white_noise_robustness_final_ssl_fold{PHYSICAL_FOLD}"),
+))
+# Each physical fold directory has one internal train/validation split.
+FOLD = int(os.environ.get("ESD_JASSNET_SPLIT_FOLD", "1"))
 
 SR = 4000
 SEG_SAMPLES = 8000

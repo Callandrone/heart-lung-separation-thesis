@@ -17,6 +17,7 @@ then ranks HF_Lung recordings by similarity to that reference cloud.
 """
 
 import argparse
+import os
 import importlib.util
 from pathlib import Path
 
@@ -31,12 +32,13 @@ from sklearn.decomposition import PCA
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(REPO_ROOT))).expanduser().resolve()
 
 DEFAULT_BASELINE_AUDIT_PATH = HERE / "04_hflung_global_vs_exph_baseline.py"
-DEFAULT_EXPH_DIR = REPO_ROOT / "dataset" / "processed" / "experiment_H_full_both"
-DEFAULT_HFLUNG_DIR = REPO_ROOT / "dataset" / "raw" / "HF_Lung_V1"
+DEFAULT_EXPH_DIR = PROJECT_ROOT / "dataset" / "processed" / "experiment_H_full_both"
+DEFAULT_HFLUNG_DIR = PROJECT_ROOT / "dataset" / "raw" / "HF_Lung_V1"
 DEFAULT_OUT_DIR = (
-    REPO_ROOT
+    PROJECT_ROOT
     / "outputs"
     / "domain_gap"
     / "HFLUNG_trend_vs_SELECTED_ICBHI"

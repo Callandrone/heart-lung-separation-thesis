@@ -69,7 +69,8 @@ The original experiments were executed on a research server. The environment-var
 
 ## Training
 
-Before running Stage 3, provide the Stage-2 checkpoint and the required dataset locations.
+Before running Stage 3, generate pseudo-labels with the matching Stage-2 teacher.
+The default checkpoint is `outputs/checkpoints/ESD_JASSNET_MIXED_FOLD<N>/finetune_fold1_best.pt`; an explicit override is optional.
 
 Example on Windows PowerShell:
 
@@ -91,3 +92,20 @@ python .\Codes\SSL_MIXED\evaluate_polarity_control.py
 ```
 
 Inference-time evaluation can apply deterministic mixture-informed polarity and gain calibration, as described in the thesis.
+
+## Teacher handoff and sampling details
+
+Set `HLSCMDS_FOLD` before pseudo-label generation. The generator and Stage 3 share
+the default Stage-2 checkpoint and honor `ESD_JASSNET_STAGE2_CKPT`. New labels are
+stored in `dataset/processed/v1_real_ssl_pseudo_fold<N>/`; historical shared labels
+require explicit directory/manifest overrides. Fold-specific release outputs do
+not establish which teacher mapping was used in the original experiments.
+
+Replay is capped at 30,000 segments. SSL receives 30% of the non-target steps,
+with confidence weights between 0.25 and 1.0. The confidence manifest must cover
+all pseudo-label samples. The published acceptance count is teacher-dependent.
+
+Evaluation supports `ESD_JASSNET_EVAL_CKPT`, `ESD_JASSNET_EVAL_DATA_DIR`,
+`ESD_JASSNET_EVAL_SPLIT_CSV`, and `ESD_JASSNET_EVAL_RESULTS_DIR`.
+`ESD_JASSNET_SPLIT_FOLD=1` selects the internal split in each physical fold.
+See [the complete workflow](../../REPRODUCIBILITY.md).

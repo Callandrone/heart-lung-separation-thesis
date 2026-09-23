@@ -1263,7 +1263,7 @@ def validate(
 
 
 ############################################
-# Mixed synthetic replay + clean V2 training
+# EXP_H replay + controlled HLS-CMDS training
 ############################################
 
 def _next_cycled_batch(loader: DataLoader, iterator):
@@ -1279,7 +1279,7 @@ def _next_cycled_batch(loader: DataLoader, iterator):
 
 def get_mixed_v2_probability(epoch_idx: int) -> float:
     """
-    Decide how often an optimisation step should use a clean-V2 batch.
+    Decide how often an optimisation step should use a controlled HLS-CMDS batch.
 
     If MIXED_USE_CURRICULUM=True, the probability is read from
     MIXED_CURRICULUM, e.g. ((0, 0.25), (3, 0.50), (8, 0.75)).
@@ -1317,8 +1317,8 @@ def train_mixed_one_epoch(
     One mixed-domain epoch.
 
     Each optimisation step uses either:
-    - one clean V2 batch, with per-triplet target gain calibration already
-      applied by the dataset wrapper, or
+    - one controlled HLS-CMDS batch (target-gain calibration is disabled in
+      the final configuration), or
     - one synthetic replay batch, using the original synthetic targets.
 
     The domain is sampled according to a curriculum probability. Synthetic

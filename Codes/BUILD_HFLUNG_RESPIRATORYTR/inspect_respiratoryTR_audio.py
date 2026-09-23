@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from tqdm import tqdm
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(os.environ.get("ESD_JASSNET_ROOT", str(REPO_ROOT))).expanduser().resolve()
 
 
 def parse_args() -> argparse.Namespace:
@@ -21,7 +23,7 @@ def parse_args() -> argparse.Namespace:
         "--extract-root",
         type=Path,
         default=(
-            REPO_ROOT
+            PROJECT_ROOT
             / "dataset"
             / "raw"
             / "respiratoryTR_p9z4h98s6j_v1"
@@ -32,7 +34,7 @@ def parse_args() -> argparse.Namespace:
         "--out-dir",
         type=Path,
         default=(
-            REPO_ROOT
+            PROJECT_ROOT
             / "outputs"
             / "domain_gap"
             / "RESPIRATORY_TR_REAL_MIXTURE_AUDIT"

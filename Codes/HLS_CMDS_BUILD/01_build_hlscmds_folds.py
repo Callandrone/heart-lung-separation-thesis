@@ -32,7 +32,7 @@ Expected counts with 5 SNRs and 2 s / 0.5 s segmentation:
 Example
 -------
 python 01_build_hlscmds_folds.py --overwrite
-python 01_build_hlscmds_folds.py --n-folds 1 --seed 42 --overwrite
+python 01_build_hlscmds_folds.py --only-fold 1 --seed 42 --overwrite
 python 01_build_hlscmds_folds.py --hs-root /path/HS --ls-root /path/LS --overwrite
 """
 
@@ -582,7 +582,7 @@ def write_summary(fold_no: int, selected_root: Path, mix_root: Path, processed_d
     lines.append(str(manifest[["segment_additivity_snr_db"]].describe().T))
     lines.append("")
     lines.append("model_config.py reminder:")
-    lines.append(f'SUPERVISED_DIR = PROJECT_ROOT + "/dataset/processed/{processed_dir.name}"')
+    lines.append(f'SUPERVISED_DIR = str(PROJECT_ROOT / "dataset" / "processed" / "{processed_dir.name}")')
     lines.append("USE_SOURCE_DISJOINT_SPLIT = True")
     lines.append('SOURCE_DISJOINT_SPLIT_CSV = SUPERVISED_DIR + "/source_disjoint_split_smoke.csv"')
     lines.append("N_FOLDS = 1")
