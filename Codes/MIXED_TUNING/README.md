@@ -15,7 +15,7 @@ The resulting checkpoints are used as teachers and initialisation points for the
 - `train_mixed_source_disjoint.py` — Stage-2 mixed-domain adaptation procedure;
 - `train_disjoint.py` — shared supervised training utilities used by the mixed-domain pipeline;
 - `evaluate_polarity_control.py` — source-level evaluation and mixture-informed inference calibration;
-- `normalization.py` — waveform normalisation utilities;
+- `normalization.py` — global layer normalisation for intermediate feature tensors;
 - `snr_filter.py` — dataset filtering utilities.
 
 ## Experimental protocol

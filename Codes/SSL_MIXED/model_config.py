@@ -159,6 +159,10 @@ WARMUP_EPOCHS = 0
 MIXED_TRAINING = True
 MIXED_USE_CURRICULUM = True
 MIXED_CURRICULUM = ((0, 0.30), (3, 0.50), (6, 0.70))
+
+# Historical names: MIXED_V2_PROB and MIXED_WEIGHT_V2 refer to controlled
+# additive target-domain mixtures from standalone HLS-CMDS HS/LS recordings,
+# not to the physical HLS-CMDS V2 subset. Retained for training-code compatibility.
 MIXED_V2_PROB = 0.50  # compatibility fallback when curriculum is disabled
 
 MIXED_WEIGHT_V2 = 1.0

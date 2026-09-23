@@ -1,6 +1,6 @@
-# Single-Channel Heart–Lung Sound Separation Across Acoustic Domains: Deep Learning and Semi-Supervised Adaptation
+# Deep Learning for Single-Channel Heart–Lung Sound Separation Across Different Recording Conditions
 
-This repository contains the research code developed for the master's thesis **_Single-Channel Heart–Lung Sound Separation Across Acoustic Domains: Deep Learning and Semi-Supervised Adaptation_** by Pietro Callandrone. The project investigates whether a compact time-domain separator can operate across two acoustically different domains:
+This repository contains the research code developed for the master's thesis **_Deep Learning for Single-Channel Heart–Lung Sound Separation Across Different Recording Conditions_** by Pietro Callandrone. The project investigates whether a compact time-domain separator can operate across two acoustically different domains:
 
 - a controlled source domain built from real-patient heart and lung recordings;
 - a shifted target domain recorded from a clinical manikin.
@@ -12,13 +12,14 @@ The proposed system, **ESD-JASSNet**, combines multi-scale convolutional encodin
 ## Research problem
 
 A digital stethoscope records heart sounds (HS) and lung sounds (LS) simultaneously as a single monaural signal. The two sources overlap substantially in time and frequency, especially in the approximate 20–500 Hz region, making fixed spectral filtering insufficient.
-Given an observed cardiopulmonary mixture
+For the controlled additive benchmarks, mixtures are constructed by summing the isolated source waveforms:
 
 $$
-M(t) = H(t) + L(t),
+M(t) = H(t) + L(t).
 $$
 
-the separation task consists in estimating the two underlying source waveforms:
+This equality holds by construction for those benchmarks. It is not assumed for physically acquired mixtures: separately recorded HS and LS signals do not necessarily reconstruct the observed mixture at waveform level. HLS-CMDS V1 physical mixtures are therefore used as unlabelled inputs for pseudo-labelling, rather than as waveform-level supervision.
+Given an observed mixture, the separation task consists in estimating the two underlying source waveforms:
 
 - $\hat{H}(t)$: estimated heart-sound waveform;
 - $\hat{L}(t)$: estimated lung-sound waveform.

@@ -9,7 +9,7 @@ Output: latent repr. Z = [B, N_latent, L] - [batch, N_Latent, T/stride= 8000/8=1
 3. GlobalLayerNorm
 4. Multi-scale depthwise Conv1D block × R
 5. Pointwise projection
----------------------------sss---
+-----------------------------
 """
 
 import math
@@ -50,13 +50,13 @@ class LearnableBasisEncoder(nn.Module):
 
         self.activation = nn.GELU() #non linear function that allows small negative values
 
-        #inizializzazione controllata ai filtri, + stabilità
+        # Initialise the learned filterbank weights.
         nn.init.kaiming_uniform_(
             self.conv.weight,
-            nonlinearity="linear", #neautral initialization
+            nonlinearity="linear", # Unit-gain initialisation.
         )
 
-    #questa funzione definisce cosa succede quando si fa x = self.basis(x)
+    # Encode the waveform using the learned basis and GELU activation.
     def forward(self, x: torch.Tensor) -> torch.Tensor:
 
         #manual padding with 4 zeros on each side, ensuring same output length
@@ -116,7 +116,7 @@ class MultiScaleDWConvBlock(nn.Module):
         residual = x #save the original input
         branch_sum = sum(conv(x) for conv in self.dw_convs) #sum the outputs of the parallel depthwise convolutions, this gives us a multi-scale representation
 
-        #attivazione → normalizzazione → dropout
+        # Pointwise projection, activation, normalisation and dropout.
         out = self.pw_conv(branch_sum)
         out = self.prelu(out)
         out = self.norm(out)
@@ -129,7 +129,7 @@ class MultiScaleDWConvBlock(nn.Module):
 ##############################
 
 class BottleneckProjection(nn.Module):
-    #reduces the reduces the dimensionality passed to the separator and helps control model size
+    #reduces the dimensionality passed to the separator and helps control model size
 
     def __init__(
         self,
@@ -210,11 +210,12 @@ class CardiopulmonaryEncoder(nn.Module):
         x = self.basis(x) #Learnable Encoder, .forward -> padding + conv1D + gelu
         x = self.input_norm(x) #Global Layer, .forward -> normalization
         x = self.dw_blocks(x) #MultiScaleDW, .forward -> 3 blocks and parallel convolution
-        Z = self.bottleneck(x) #BottleNeck, .forward -> Conv1D 1x1 (64->32) + GlobalLayer
+        Z = self.bottleneck(x) #BottleNeck
         return Z
 
     def receptive_field_ms(self, sr: int = cfg.SR) -> float:
-        #Approximate local receptive field of the encoder in milliseconds -> 132ms at 4Khz
+        # Compute the convolutional path's local receptive field in milliseconds.
+        # GlobalLayerNorm also introduces dependence across the full segment.
 
         dw_kernel = 3
         max_dilation = max(self.config["dilations"])
