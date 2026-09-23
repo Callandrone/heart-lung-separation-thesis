@@ -16,20 +16,6 @@ Intended use
 ------------
 Evaluation only. Do NOT use this dataset for training or model selection.
 
-Default design
---------------
-- 25 HS sources from PhysioNet quality/selected manifest
-- 25 LS sources from HF_Lung ranking, normally the first 25 from top50/very-close
-- SNR grid: {-6, -3, 0, +3, +6}
-- base triplets: 25 x 25 x 5 = 3125
-- segments: 3125 x 27 = 84375
-
-Outputs
--------
-PROJECT_ROOT/dataset/HFLUNG_SELECTED_25X25_EXTERNAL_VAL_SELECTED
-PROJECT_ROOT/dataset/MIX_HFLUNG_SELECTED_25X25_EXTERNAL_VAL_4K
-PROJECT_ROOT/dataset/processed/hflung_selected_25x25_external_val
-
 The processed folder is compatible with evaluate_polarity_control.py:
     M_000001_s000_orig.wav
     H_000001_s000_orig.wav
@@ -42,7 +28,7 @@ Example
 python Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_25x25_external_val.py \
   --project-root . \
   --hs-selected-csv /path/to/audited_hs_selection.csv \
-  --selection top25 \
+  --selection top20 \
   --overwrite
 """
 
@@ -803,12 +789,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--hflung-label-csv", type=Path, default=None)
     p.add_argument("--hflung-root", type=Path, default=None)
 
-    p.add_argument("--selection", type=str, default="top25", choices=["top25", "top50_first25", "top50", "very_close", "very_close_p95_1", "close"])
+    p.add_argument("--selection", type=str, default="top20", choices=["top25", "top50_first25", "top50", "very_close", "very_close_p95_1", "close"])
     p.add_argument("--prefer-trunc", action="store_true", help="Keep only trunc_ HF_Lung files before taking n_ls.")
     p.add_argument("--allowed-locations", type=str, default="", help="Optional comma list, e.g. L1,L2,L5,L6,L8")
 
-    p.add_argument("--n-hs", type=int, default=25)
-    p.add_argument("--n-ls", type=int, default=25)
+    p.add_argument("--n-hs", type=int, default=20)
+    p.add_argument("--n-ls", type=int, default=20)
     p.add_argument("--snrs", nargs="+", default=[str(int(x)) for x in DEFAULT_SNRS])
     p.add_argument("--out-name", type=str, default="hflung_selected_25x25_external_val")
     p.add_argument("--overwrite", action="store_true")

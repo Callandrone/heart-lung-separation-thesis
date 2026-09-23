@@ -179,7 +179,7 @@ class WorkflowTests(unittest.TestCase):
                 self.assertTrue(torch.isfinite(heart).all())
 
     def test_hflung_requires_explicit_hs_input(self):
-        module = load_module("Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_25x25_external_val.py", "hflung_test")
+        module = load_module("Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_20x20_external_val.py", "hflung_test")
         with patch.object(sys, "argv", ["builder"]), contextlib.redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit):
                 module.parse_args()
@@ -187,7 +187,7 @@ class WorkflowTests(unittest.TestCase):
     def test_hflung_overlap_and_unknown_split_fail_closed(self):
         sys.path.insert(0, str(ROOT / "Codes" / "BUILD_HFLUNG_RESPIRATORYTR"))
         self.addCleanup(sys.path.remove, str(ROOT / "Codes" / "BUILD_HFLUNG_RESPIRATORYTR"))
-        module = load_module("Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_25x25_external_val.py", "hflung_overlap_test")
+        module = load_module("Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_20x20_external_val.py", "hflung_overlap_test")
         manifest = self.root / "exph.csv"
         reference = pd.DataFrame({"source_id": ["record_a", "record_b"], "source_path": ["a.wav", "b.wav"], "split": ["train", "val"]})
         reference.to_csv(manifest, index=False)
@@ -205,7 +205,7 @@ class WorkflowTests(unittest.TestCase):
             module.check_hs_overlap(args, reference.iloc[:1].copy())
 
     def test_hflung_relative_audio_paths_resolve_under_root(self):
-        module = load_module("Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_25x25_external_val.py", "hflung_paths_test")
+        module = load_module("Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_20x20_external_val.py", "hflung_paths_test")
         (self.root / "source.wav").touch()
         manifest = self.root / "hs.csv"
         pd.DataFrame({"source_id": ["new_hs"], "source_path": ["source.wav"]}).to_csv(manifest, index=False)
@@ -217,7 +217,7 @@ class WorkflowTests(unittest.TestCase):
         import soundfile as sf
         sys.path.insert(0, str(ROOT / "Codes" / "BUILD_HFLUNG_RESPIRATORYTR"))
         self.addCleanup(sys.path.remove, str(ROOT / "Codes" / "BUILD_HFLUNG_RESPIRATORYTR"))
-        module = load_module("Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_25x25_external_val.py", "hflung_build_test")
+        module = load_module("Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_20x20_external_val.py", "hflung_build_test")
         t = np.arange(60000) / 4000
         sf.write(self.root / "external_heart.wav", 0.2 * np.sin(2 * np.pi * 60 * t), 4000, subtype="FLOAT")
         sf.write(self.root / "external_lung.wav", 0.1 * np.sin(2 * np.pi * 350 * t), 4000, subtype="FLOAT")
