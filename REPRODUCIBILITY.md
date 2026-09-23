@@ -1,82 +1,67 @@
-# Reproducing the release workflow
+# Reproducing the workflow
 
-The release encodes the published hyperparameters. It does not contain enough
-historical artifacts to regenerate every thesis result from a fresh clone.
-The commands below describe the maintained release workflow; they do not certify
-that a new run reproduces the original checkpoints or reported acceptance counts.
-
-## Inputs that still need to be recovered
-
-| Artifact | Why it is needed |
-|---|---|
-| Original training configurations, run logs, dependency environment and checkpoints | Verify the exact historical training executions and reported numerical results |
-| Historical Stage-3 fold-to-pseudo-label/checkpoint mapping | Establish whether all five Stage-3 runs consumed the recovered shared Fold-2-generated pseudo-label pool or used different inputs |
-| Full evaluation exports and ablation configurations | Regenerate aggregate tables and paired comparisons |
-
-Put recovered, small source-ID/split manifests in `reproducibility/manifests/`.
-That directory is exempt from the general CSV ignore rule. Include provenance,
-source checksums and a description of path columns. Do not invent selections from
-the reported aggregate results. Historical absolute paths must be relocated or
-resolved against the experiment root before reuse.
+This guide explains how to run the workflow implemented in this repository.
 
 ## Environment
 
-Install `requirements.txt` in a virtual environment. It describes dependencies,
-not the original training environment. `requirements-verified.txt` records the
-environment used for release regression checks (Windows, Python 3.14); it is not
-a historical thesis lockfile or a CUDA installation recipe.
+Create and activate a virtual environment, then install the project dependencies.
 
-Record the environment for each new experiment:
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+Optionally save the environment used for a new experiment, then run the existing
+test suite:
 
 ```powershell
 python tools/capture_environment.py --output outputs/environment.json
 python -m unittest discover -s tests -v
 ```
 
-Seeds are configured in the trainers. Bitwise GPU reproducibility is not promised;
-record the hardware, GPU driver and CUDA/PyTorch build alongside each run. Retain
+Seeds are configured in the trainers. Record the hardware, GPU driver and
+CUDA/PyTorch build alongside each run when GPU reproducibility matters. Retain
 the effective configuration, source selections, split CSVs, teacher identity,
 checkpoint checksum and evaluation outputs with the experiment.
 
 ## Paths and folds
 
-`ESD_JASSNET_ROOT` selects the data/output root. Code stays in this repository.
-Explicit script arguments and dataset environment overrides take precedence over
-their defaults. Relative paths are relative to the current working directory,
-except HS audio paths in HF_Lung manifests, which can also resolve under the
-specified project root. Prefer absolute paths for relocated inputs.
+`ESD_JASSNET_ROOT` selects the data/output root while code remains in this
+repository. Explicit script arguments and dataset environment overrides take
+precedence over defaults. Relative paths are relative to the current working
+directory, except HS audio paths in HF_Lung manifests, which can also resolve
+under the specified project root.
 
-New HLS-CMDS folds use `dataset/processed/hlscmds_full_40x40_10x10_no_unused_fold<N>`.
-Training and noise-audit configuration discover an existing `torabi_*` directory
-only when the canonical directory is absent. `HLSCMDS_TARGET_DIR` overrides both;
-the older `HLSCMDS_DATASET_DIR` is supported as a lower-priority alias.
+HLS-CMDS folds use
+`dataset/processed/hlscmds_full_40x40_10x10_no_unused_fold<N>`.
+`HLSCMDS_TARGET_DIR` overrides the target dataset directory;
+`HLSCMDS_DATASET_DIR` is supported as a lower-priority alias.
 
-`HLSCMDS_FOLD` selects the **physical fold directory** (1–5). Each such directory
-contains one split with **internal `fold_no=1`**. Leave `ONLY_FOLD=1` and
-`N_FOLDS=1`. `ESD_JASSNET_SPLIT_FOLD` selects that internal label for explicit
-checkpoint evaluation and noise audits; its default is 1.
+`HLSCMDS_FOLD` selects the physical fold directory (1–5). Each directory contains
+one split with internal `fold_no=1`, so leave `ONLY_FOLD=1` and `N_FOLDS=1`.
+`ESD_JASSNET_SPLIT_FOLD` selects that internal label for explicit-checkpoint
+evaluation and noise audits; its default is 1.
 
-Historical `TORABI_*` result labels and `source_disjoint_split_smoke.csv` remain
-supported. The latter contains the actual split, not a reduced smoke test.
+## Stage 1 — EXP_H supervised training
 
-## Stage 1 and target-only scratch training
-
-First build EXP_H using `Codes/EXP_H_BUILD/README.md` and the recovered inputs.
-The following profile reuses the supervised trainer with replay disabled:
+Build EXP_H using `Codes/EXP_H_BUILD/README.md`, then run the supervised trainer
+with replay disabled:
 
 ```powershell
 $env:ESD_JASSNET_TRAINING_MODE = "stage1"
 python Codes/MIXED_TUNING/train_mixed_source_disjoint.py
 ```
 
-This selects EXP_H, supervised-from-scratch training, learning rate `1e-4`,
+This profile uses supervised-from-scratch training with learning rate `1e-4`,
 30 epochs and patience 5. It writes
 `outputs/checkpoints/EXP_H_FULL_BOTH/scratch_fold1_best.pt`.
-`EXPH_DATA_DIR` and `EXPH_SPLIT_CSV` override its inputs.
-The old `pretrain` function is a pseudo-mixture training branch and is not this
-supervised Stage-1 profile.
+`EXPH_DATA_DIR` and `EXPH_SPLIT_CSV` override its dataset and split inputs.
 
-For the target-only scratch reference, build HLS-CMDS folds and select:
+## Target-only scratch reference
+
+Build the HLS-CMDS folds and select the physical fold:
 
 ```powershell
 python Codes/HLS_CMDS_BUILD/01_build_hlscmds_folds.py
@@ -85,53 +70,92 @@ $env:ESD_JASSNET_TRAINING_MODE = "target_scratch"
 python Codes/MIXED_TUNING/train_mixed_source_disjoint.py
 ```
 
-This uses the same 30-epoch/`1e-4`/patience-5 settings and writes
-`outputs/checkpoints/ESD_JASSNET_SCRATCH_FOLD1/scratch_fold1_best.pt`.
+This profile uses learning rate `1e-4`, 30 epochs and patience 5. For fold 1 it
+writes `outputs/checkpoints/ESD_JASSNET_SCRATCH_FOLD1/scratch_fold1_best.pt`.
 
-## Stage 2, pseudo-labels and Stage 3
+## Stage 2 — supervised target adaptation
 
-For each physical fold, use its supervised Stage-2 checkpoint as teacher and
-student initialization. New pseudo-label output directories are fold-specific
-to prevent accidental overwriting or reuse. This is the release workflow.
+For each physical fold, run supervised target adaptation with EXP_H replay:
 
 ```powershell
 $env:HLSCMDS_FOLD = "1"
 $env:ESD_JASSNET_TRAINING_MODE = "stage2"
 python Codes/MIXED_TUNING/train_mixed_source_disjoint.py
+```
+
+Repeat with `HLSCMDS_FOLD=2` through `5`. Stage 2 writes
+`outputs/checkpoints/ESD_JASSNET_MIXED_FOLD<N>/finetune_fold1_best.pt`.
+`ESD_JASSNET_STAGE1_CKPT` overrides the Stage-1 initialization, and
+`ESD_JASSNET_STAGE2_CKPT` overrides the Stage-2 checkpoint used by downstream
+steps.
+
+Both adaptation stages cap EXP_H replay at 30,000 segments. An epoch contains as
+many optimization steps as the target loader. Stage 2 uses learning rate `1e-6`,
+10 epochs, patience 3 and replay weight 0.05.
+
+## Pseudo-label generation
+
+Build the common mixture-only input once, then generate fold-specific
+pseudo-labels with the corresponding Stage-2 checkpoint:
+
+```powershell
 python Codes/SSL_MIXED/dataset_generation/01_build_m1_segmented_only.py
+$env:HLSCMDS_FOLD = "1"
 python Codes/SSL_MIXED/dataset_generation/02_generate_v1_ssl_pseudo_labels.py
+```
+
+Repeat generation with `HLSCMDS_FOLD=2` through `5`. Existing builder outputs
+require `--overwrite` to regenerate. The generator uses the fold's Stage-2
+checkpoint by default. `ESD_JASSNET_STAGE2_CKPT` overrides it, while the
+generator's `--teacher-ckpt` or `--teacher-experiment` option takes precedence.
+
+Pseudo-labels are written under
+`dataset/processed/v1_real_ssl_pseudo_fold<N>`. Set
+`ESD_JASSNET_SSL_PSEUDO_DIR` to a `confident/` directory and
+`ESD_JASSNET_SSL_MANIFEST` to its manifest to override these inputs. When only
+the directory is overridden, the manifest defaults to
+`manifest_pseudo_confident.csv` in its parent directory. Confidence-weighted
+training requires complete manifest coverage. The pseudo-label audit accepts an
+explicit `--pseudo-root`.
+
+## Stage 3 — semi-supervised refinement
+
+Train and evaluate each physical fold:
+
+```powershell
+$env:HLSCMDS_FOLD = "1"
 python Codes/SSL_MIXED/train_mixed_ssl_source_disjoint.py
 python Codes/SSL_MIXED/evaluate_polarity_control.py
 ```
 
-Build the common M-only input once. Repeat Stage 2, pseudo-label generation,
-Stage 3 and evaluation with `HLSCMDS_FOLD=2` through `5`. Existing builder outputs
-require an explicit `--overwrite` to regenerate.
+Repeat with `HLSCMDS_FOLD=2` through `5`. Stage 3 uses learning rate `1e-6`,
+10 epochs, patience 3, replay weight 0.05 and SSL weight 0.10. It allocates 30%
+of non-target steps to SSL, producing total SSL probabilities 0.21, 0.15 and
+0.09 at target probabilities 0.30, 0.50 and 0.70. Confidence weights range from
+0.25 to 1.0.
 
-Stage 2 writes `ESD_JASSNET_MIXED_FOLD<N>/finetune_fold1_best.pt`; both teacher
-generation and Stage 3 use that checkpoint by default. `ESD_JASSNET_STAGE2_CKPT`
-overrides it. The generator's explicit `--teacher-ckpt` or
-`--teacher-experiment` takes precedence. A shared historical teacher must be
-selected explicitly and recorded as such.
+## External validation
 
-Pseudo-labels are written under `dataset/processed/v1_real_ssl_pseudo_fold<N>`.
-For existing historical labels, set `ESD_JASSNET_SSL_PSEUDO_DIR` to the
-`confident/` directory and `ESD_JASSNET_SSL_MANIFEST` to its manifest. When only
-the directory is overridden, the manifest defaults to its parent's
-`manifest_pseudo_confident.csv`. Verify the manifest's `teacher_ckpt` against the
-intended teacher. Confidence-weighted training requires complete manifest coverage.
-The pseudo-audit accepts an explicit `--pseudo-root` for historical locations.
+HF_Lung construction requires exactly one explicit `--hs-selected-csv` or
+`--hs-quality-csv`. It checks source identifiers and paths against
+`--exph-hs-selected-csv` before writing audio and rejects detected training
+overlap. Run the waveform-fingerprint audit as well to check renamed copies.
 
-Both stages cap EXP_H replay at 30,000 segments. An epoch contains as many
-optimization steps as the target loader. Stage 3 allocates 30% of non-target
-steps to SSL, producing total SSL probabilities 0.21, 0.15 and 0.09 at target
-probabilities 0.30, 0.50 and 0.70. Confidence weights range from 0.25 to 1.0.
-The reported 2,740/2,970 acceptance count belongs to the original teacher; a new
-teacher can produce a different count.
+```powershell
+python Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_20x20_external_val.py --hs-selected-csv D:\inputs\audited_external_hs.csv --exph-hs-selected-csv D:\inputs\selected_hs_EXP_H_FULL_BOTH.csv
+python Codes/BUILD_HFLUNG_RESPIRATORYTR/audit_hflung_physionet_hs_leakage.py --exph-hs-selected-csv D:\inputs\selected_hs_EXP_H_FULL_BOTH.csv
+```
 
-## Explicit checkpoint and external evaluation
+The final protocol uses 20 HS and 20 LS sources at {-6, -3, 0, +3, +6} dB; the
+builder and audit default to that protocol. For another size, specify `--n-hs`,
+`--n-ls`, a descriptive `--out-name`, and the matching audit
+`--external-selected-root`. `--allow-exph-train-overlap` enables the explicitly
+LS-only external protocol and records the overlap. The builder uses
+similarity-ranked HF_Lung LS files.
 
-The same variables work in both evaluator directories:
+## Evaluation and bootstrap
+
+The same explicit-evaluation variables work in both evaluator directories:
 
 ```powershell
 $env:ESD_JASSNET_EVAL_CKPT = "D:\experiments\finetune_fold1_best.pt"
@@ -143,54 +167,22 @@ python Codes/SSL_MIXED/evaluate_polarity_control.py
 ```
 
 Explicit-checkpoint evaluation selects validation rows from the split CSV.
-External HF_Lung builds contain validation-only rows. Clear these evaluation
-overrides before returning to normal fold evaluation.
+External HF_Lung builds contain validation-only rows. Clear these overrides
+before returning to normal fold evaluation.
 
-HF_Lung construction requires exactly one explicit `--hs-selected-csv` or
-`--hs-quality-csv`. It checks source identifiers and paths against
-`--exph-hs-selected-csv` before writing audio and rejects detected training
-overlap. Run the separate waveform-fingerprint audit as well to check renamed
-copies. Absence of detected recording overlap does not establish patient-level
-independence. Reuse of EXP_H validation hearts must also be reported.
+For error analysis, use `--fold 1` with each physical-fold directory and its
+explicit checkpoint. The export infers `physical_fold` from `_fold<N>` in the
+dataset directory; use `--physical-fold` for custom directory names. Pooled
+exports must retain this column because sample/base IDs restart in each physical
+fold.
 
-```powershell
-python Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_20x20_external_val.py --hs-selected-csv D:\inputs\audited_external_hs.csv --exph-hs-selected-csv D:\inputs\selected_hs_EXP_H_FULL_BOTH.csv
-python Codes/BUILD_HFLUNG_RESPIRATORYTR/audit_hflung_physionet_hs_leakage.py --exph-hs-selected-csv D:\inputs\selected_hs_EXP_H_FULL_BOTH.csv
-```
-
-The final thesis protocol uses 20 HS and 20 LS sources at {-6, -3, 0, +3, +6} dB,
-and the builder and audit default to that protocol.
-For another size, specify `--n-hs`, `--n-ls`, a descriptive `--out-name`, and the
-matching audit `--external-selected-root`. `--allow-exph-train-overlap` permits
-an explicitly LS-only external protocol and records the overlap; it must not be
-described as an unseen two-source benchmark. The builder uses similarity-ranked
-HF_Lung LS files. The quality-balanced HF_Lung selection utility is a separate
-coverage-analysis workflow, not its direct input.
-
-## Error analysis and bootstrap
-
-Use `--fold 1` with each physical fold directory and its explicit checkpoint.
-The error-analysis export infers `physical_fold` from `_fold<N>` in the dataset
-directory; use `--physical-fold` for custom directory names. Pooled exports must
-retain this column because sample/base IDs restart in each physical fold.
-
-Bootstrap defaults to the error analysis output `final_mixed_ssl`. Compare
-explicit runs using:
+Bootstrap defaults to the error-analysis output `final_mixed_ssl`. Compare
+explicit runs with:
 
 ```powershell
 python Codes/ERROR_ANALYSIS/02_bootstrap_ci_error_analysis.py --run SSL_baseline=final_mixed_ssl --run stage2=stage2_analysis
 ```
 
-Pairing requires unique fold-qualified sample IDs. Do not pool different datasets
-that reuse identifiers into one run. Resampling remains at base-mixture level;
-it accounts for overlapping windows, not every dependency induced by source reuse.
-
-## Delivered examples and historical naming
-
-`Deliverables/EXP_H` contains Stage-1 checkpoint examples. `Deliverables/TORABI`
-contains final SSL examples for physical folds 1–5. Their JSON files retain the
-original server paths and experiment names as provenance. The historical
-`SSL - FOLD<N>_EXPERIMENT26GIUGNO_NUMBERONE` names describe original runs; the new
-`ESD_JASSNET_SSL_FOLD<N>` directories describe release runs and are not asserted
-to contain identical checkpoints. No bundled audio, metrics or reported result
-table was changed by the release cleanup.
+Pairing requires unique fold-qualified sample IDs. Do not pool datasets that
+reuse identifiers into one run. Resampling is performed at base-mixture level
+to account for overlapping windows.
