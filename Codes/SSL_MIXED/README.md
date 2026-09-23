@@ -18,7 +18,7 @@ The final configuration corresponds to the ESD-JASSNet results reported in the t
 - `model_config.py` — architecture, training and path configuration;
 - `train_mixed_ssl_source_disjoint.py` — final Stage-3 training procedure;
 - `evaluate_polarity_control.py` — source-level evaluation and mixture-informed inference calibration;
-- `normalization.py` — waveform normalisation utilities;
+- `normalization.py` — global layer normalisation for intermediate feature tensors;
 - `snr_filter.py` — dataset filtering utilities.
 
 ## Pseudo-label generation
@@ -26,8 +26,8 @@ The final configuration corresponds to the ESD-JASSNet results reported in the t
 The `dataset_generation/` directory contains the preprocessing chain used for the unlabelled HLS-CMDS V1 physical mixtures:
 
 1. `01_build_m1_segmented_only.py` — prepares the segmented mixture-only dataset;
-2. `02_generate_v1_ssl_pseudo_labels.py` — generates teacher pseudo-labels;
-3. `03_audit_v1_ssl_pseudo_labels.py` — applies consistency and non-degeneracy checks and identifies the confident pseudo-label subset.
+2. `02_generate_v1_ssl_pseudo_labels.py` — generates teacher pseudo-labels, applies confidence filtering and exports accepted/rejected manifests;
+3. `03_audit_v1_ssl_pseudo_labels.py` — audits the accepted pseudo-labels through acoustic features, reference comparisons and qualitative examples.
 
 In the final experiment, 2,740 of 2,970 candidate segments passed the confidence filter.
 

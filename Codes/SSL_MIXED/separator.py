@@ -192,7 +192,7 @@ class JointLocalGlobalAttention(nn.Module):
     """
     Joint local-global attention
     Shared representation:
-        Z = ConvM(X'') in R^(S x D), with D << N
+        Z = ConvM(X'') in R^(S x D), with D set by attn_dim
 
     It is used to build
         Q, K   -> local attention

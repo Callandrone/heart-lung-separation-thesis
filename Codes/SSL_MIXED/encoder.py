@@ -53,7 +53,7 @@ class LearnableBasisEncoder(nn.Module):
         # Initialise the learned filterbank weights.
         nn.init.kaiming_uniform_(
             self.conv.weight,
-            nonlinearity="linear", #neautral initialization
+            nonlinearity="linear", # Unit-gain initialisation.
         )
 
     # Encode the waveform using the learned basis and GELU activation.
