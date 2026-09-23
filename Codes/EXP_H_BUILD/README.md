@@ -101,11 +101,3 @@ The builders preserve the source selection and waveform-construction logic of th
 
 The environment variable `ESD_JASSNET_ROOT` can be used as the default project root. Command-line paths take precedence when explicitly supplied.
 
-
-The original EXP_E manifests and quality/cluster tables are not bundled, and their
-upstream preparation scripts are also absent. Raw dataset downloads alone are
-insufficient to reconstruct this frozen benchmark. See the outstanding-input
-inventory in [REPRODUCIBILITY.md](../../REPRODUCIBILITY.md).
-After recovering inputs and building EXP_H, use the supervised `stage1` training
-profile documented there. These release defaults are not a recovered historical
-run configuration.

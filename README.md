@@ -88,8 +88,7 @@ Purpose:
 - establish a strong source-domain checkpoint;
 - provide the replay and retention reference for later adaptation stages.
 
-The source-domain checkpoint uses the supervised training implementation shared with adaptation, with replay disabled. Select `ESD_JASSNET_TRAINING_MODE=stage1` and run `Codes/MIXED_TUNING/train_mixed_source_disjoint.py`. This profile encodes the published settings; the original selection manifests and training environment still need to be recovered. See [reproducibility instructions](REPRODUCIBILITY.md).
-
+The source-domain checkpoint uses the supervised training implementation shared with adaptation, with replay disabled. Select `ESD_JASSNET_TRAINING_MODE=stage1` and run `Codes/MIXED_TUNING/train_mixed_source_disjoint.py`. 
 ### Stage 2 — Supervised target adaptation with replay
 
 The EXP_H checkpoint is adapted to controlled HLS-CMDS target-domain mixtures constructed from standalone manikin HS and LS recordings.

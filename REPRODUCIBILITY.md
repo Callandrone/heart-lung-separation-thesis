@@ -9,9 +9,9 @@ that a new run reproduces the original checkpoints or reported acceptance counts
 
 | Artifact | Why it is needed |
 |---|---|
-| Frozen EXP_E HS/LS manifests | Starting selection for EXP_G, then EXP_H |
-| PhysioNet quality and abnormal-cluster tables | Reconstruct the screened HS pool |
-| ICBHI quality/class-selection table | Reconstruct the screened LS pool |
+| Starting selection for EXP_G, then EXP_H |
+Reconstruct the screened HS pool |
+Reconstruct the screened LS pool |
 | Original experiment configurations, seeds, dependency versions and checkpoints | Verify the published numerical results |
 | Historical per-fold teacher/student mapping and pseudo-label manifests | Establish whether original folds used separate teachers or shared labels |
 | Final HF_Lung selection and invocation | Establish the published subset size and HS overlap policy |
