@@ -9,12 +9,9 @@ that a new run reproduces the original checkpoints or reported acceptance counts
 
 | Artifact | Why it is needed |
 |---|---|
-| Starting selection for EXP_G, then EXP_H |
-Reconstruct the screened HS pool |
-Reconstruct the screened LS pool |
-| Original experiment configurations, seeds, dependency versions and checkpoints | Verify the published numerical results |
-| Historical per-fold teacher/student mapping and pseudo-label manifests | Establish whether original folds used separate teachers or shared labels |
-| Final HF_Lung selection and invocation | Establish the published subset size and HS overlap policy |
+| Original training configurations, run logs, dependency environment and checkpoints | Verify the exact historical training executions and reported numerical results |
+| Historical Stage-3 fold-to-pseudo-label/checkpoint mapping | Establish whether all five Stage-3 runs consumed the recovered shared Fold-2-generated pseudo-label pool or used different inputs |
+| Final HF_Lung 20x20 selection and invocation | Recover the exact external-validation subset and HS overlap policy used in the thesis |
 | Full evaluation exports and ablation configurations | Regenerate aggregate tables and paired comparisons |
 
 Put recovered, small source-ID/split manifests in `reproducibility/manifests/`.
@@ -103,8 +100,7 @@ This uses the same 30-epoch/`1e-4`/patience-5 settings and writes
 
 For each physical fold, use its supervised Stage-2 checkpoint as teacher and
 student initialization. New pseudo-label output directories are fold-specific
-to prevent accidental overwriting or reuse. This is the release workflow;
-the historical teacher mapping must still be recovered.
+to prevent accidental overwriting or reuse. This is the release workflow.
 
 ```powershell
 $env:HLSCMDS_FOLD = "1"

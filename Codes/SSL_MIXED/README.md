@@ -98,9 +98,7 @@ Inference-time evaluation can apply deterministic mixture-informed polarity and 
 Set `HLSCMDS_FOLD` before pseudo-label generation. The generator and Stage 3 share
 the default Stage-2 checkpoint and honor `ESD_JASSNET_STAGE2_CKPT`. New labels are
 stored in `dataset/processed/v1_real_ssl_pseudo_fold<N>/`; historical shared labels
-require explicit directory/manifest overrides. Fold-specific release outputs do
-not establish which teacher mapping was used in the original experiments.
-
+require explicit directory/manifest overrides.
 Replay is capped at 30,000 segments. SSL receives 30% of the non-target steps,
 with confidence weights between 0.25 and 1.0. The confidence manifest must cover
 all pseudo-label samples. The published acceptance count is teacher-dependent.
