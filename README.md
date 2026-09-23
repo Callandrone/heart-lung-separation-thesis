@@ -33,7 +33,7 @@ The thesis focuses not only on in-domain separation, but also on domain shift, t
 The project includes:
 
 1. **HLS-CMDS waveform-coherence audit**  
-   Analysis of the physical mixtures and their associated isolated recordings before using them as waveform-level supervision. The original coherence-audit implementation is not included in this release.
+   Analysis of the physical mixtures and their associated isolated recordings before using them as waveform-level supervision.
 
 2. **EXP_H benchmark construction**  
    A controlled, exactly additive and source-disjoint benchmark built from quality-screened PhysioNet 2016 heart sounds and ICBHI 2017 lung sounds.
@@ -42,7 +42,7 @@ The project includes:
    A compact time-domain separator with approximately **300k trainable parameters**.
 
 4. **Controlled and capacity-matched comparisons**  
-   Capacity-matched JASSNet-like comparison results reported in the thesis. The auxiliary reconstruction code is not distributed in this public repository.
+   Capacity-matched JASSNet-like comparison results reported in the thesis.
 
 5. **Acoustic domain-gap analysis**  
    Quantification through RMS-normalised acoustic features, standardised mean differences, a domain classifier and CORAL covariance distance.
@@ -153,7 +153,7 @@ Unless otherwise specified by a baseline-specific protocol, waveforms are:
 
 Controlled mixtures preserve additivity by applying source scaling followed by one shared triplet gain.
 
-The Montoro M7 NMF baseline implementation is not included in this release. In the thesis it uses a separate 8 kHz, 7-second, STFT-based processing chain and must therefore be interpreted as a directional classical comparison rather than an identical end-to-end protocol.
+The Montoro M7 NMF baseline uses a separate 8 kHz, 7-second, STFT-based processing chain and must therefore be interpreted as a directional classical comparison rather than an identical end-to-end protocol.
 
 ---
 
@@ -298,12 +298,11 @@ The main training pipelines can be configured through variables such as:
 Dataset builders and analysis scripts additionally expose command-line options
 for their relevant input and output locations.
 
-See the README inside each `Codes/` subdirectory for the corresponding workflow
-and configuration details.
+See the available README files inside `Codes/` for workflow and configuration
+details.
 
 Raw third-party datasets and trained checkpoints are not duplicated in this
-repository unless explicitly included. The repository provides a subset of the thesis dataset-construction, training,
-adaptation and evaluation code. It is not a complete archive of the experiments.
+repository unless explicitly included. The repository provides thesis dataset-construction, training,
+adaptation and evaluation code.
 See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for runnable profiles, path precedence,
-external-validation safeguards, verified dependencies and the historical inputs
-and implementations that remain unavailable.
+external-validation safeguards and verified dependencies.

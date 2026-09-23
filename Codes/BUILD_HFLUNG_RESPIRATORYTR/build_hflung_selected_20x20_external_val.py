@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-build_hflung_selected_25x25_external_val.py
+build_hflung_selected_20x20_external_val.py
 
 Build an external synthetic validation set:
 
@@ -25,7 +25,7 @@ The processed folder is compatible with evaluate_polarity_control.py:
 
 Example
 -------
-python Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_25x25_external_val.py \
+python Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_20x20_external_val.py \
   --project-root . \
   --hs-selected-csv /path/to/audited_hs_selection.csv \
   --selection top20 \
@@ -342,7 +342,9 @@ def read_hflung_sources(args: argparse.Namespace) -> pd.DataFrame:
     df = df.reset_index(drop=False).rename(columns={"index": "ranking_index"})
 
     selection = args.selection.lower()
-    if selection in {"top25", "top50_first25", "top"}:
+    if selection == "top20":
+        sub = df.head(int(args.n_ls)).copy()
+    elif selection in {"top25", "top50_first25", "top"}:
         sub = df.head(max(int(args.n_ls), 25)).copy()
     elif selection == "top50":
         sub = df.head(50).copy()
@@ -789,14 +791,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--hflung-label-csv", type=Path, default=None)
     p.add_argument("--hflung-root", type=Path, default=None)
 
-    p.add_argument("--selection", type=str, default="top20", choices=["top25", "top50_first25", "top50", "very_close", "very_close_p95_1", "close"])
+    p.add_argument("--selection", type=str, default="top20", choices=["top20", "top25", "top50_first25", "top", "top50", "very_close", "very_close_p95_1", "close"])
     p.add_argument("--prefer-trunc", action="store_true", help="Keep only trunc_ HF_Lung files before taking n_ls.")
     p.add_argument("--allowed-locations", type=str, default="", help="Optional comma list, e.g. L1,L2,L5,L6,L8")
 
     p.add_argument("--n-hs", type=int, default=20)
     p.add_argument("--n-ls", type=int, default=20)
     p.add_argument("--snrs", nargs="+", default=[str(int(x)) for x in DEFAULT_SNRS])
-    p.add_argument("--out-name", type=str, default="hflung_selected_25x25_external_val")
+    p.add_argument("--out-name", type=str, default="hflung_selected_20x20_external_val_hs_unseen")
     p.add_argument("--overwrite", action="store_true")
 
     args = p.parse_args()

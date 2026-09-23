@@ -491,7 +491,7 @@ def create_candidate_csv(
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--project-root", type=Path, default=PROJECT_ROOT)
-    p.add_argument("--external-selected-root", type=Path, default=None, help="Root like dataset/HFLUNG_SELECTED_25X25_EXTERNAL_VAL_SELECTED")
+    p.add_argument("--external-selected-root", type=Path, default=None, help="Root like dataset/HFLUNG_SELECTED_20X20_EXTERNAL_VAL_HS_UNSEEN_SELECTED")
     p.add_argument("--external-hs-csv", type=Path, default=None, help="Explicit selected_hs_physionet*.csv")
     p.add_argument("--exph-hs-selected-csv", type=Path, default=None, help="EXP_H selected_hs_EXP_H_FULL_BOTH.csv")
     p.add_argument("--physionet-quality-csv", type=Path, default=None, help="PhysioNet quality CSV, needed only to create replacement HS CSV")
@@ -509,9 +509,9 @@ def main() -> None:
     args = parse_args()
     project_root = Path(args.project_root)
 
-    external_selected_root = args.external_selected_root or (project_root / "dataset" / "HFLUNG_SELECTED_25X25_EXTERNAL_VAL_SELECTED")
+    external_selected_root = args.external_selected_root or (project_root / "dataset" / "HFLUNG_SELECTED_20X20_EXTERNAL_VAL_HS_UNSEEN_SELECTED")
     exph_hs_csv = args.exph_hs_selected_csv or (project_root / "dataset" / "EXP_H_FULL_BOTH_SELECTED" / "selected_hs_EXP_H_FULL_BOTH.csv")
-    out_dir = args.out_dir or (project_root / "outputs" / "domain_gap" / "HFLUNG_PHYSIONET_25X25_HS_LEAKAGE_AUDIT")
+    out_dir = args.out_dir or (project_root / "outputs" / "domain_gap" / "HFLUNG_PHYSIONET_20X20_HS_UNSEEN_LEAKAGE_AUDIT")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     external_hs_csv = find_external_hs_csv(external_selected_root, args.external_hs_csv)

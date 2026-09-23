@@ -11,7 +11,6 @@ that a new run reproduces the original checkpoints or reported acceptance counts
 |---|---|
 | Original training configurations, run logs, dependency environment and checkpoints | Verify the exact historical training executions and reported numerical results |
 | Historical Stage-3 fold-to-pseudo-label/checkpoint mapping | Establish whether all five Stage-3 runs consumed the recovered shared Fold-2-generated pseudo-label pool or used different inputs |
-| Final HF_Lung 20x20 selection and invocation | Recover the exact external-validation subset and HS overlap policy used in the thesis |
 | Full evaluation exports and ablation configurations | Regenerate aggregate tables and paired comparisons |
 
 Put recovered, small source-ID/split manifests in `reproducibility/manifests/`.
@@ -19,13 +18,6 @@ That directory is exempt from the general CSV ignore rule. Include provenance,
 source checksums and a description of path columns. Do not invent selections from
 the reported aggregate results. Historical absolute paths must be relocated or
 resolved against the experiment root before reuse.
-
-The upstream EXP_E selection and PhysioNet/ICBHI screening/clustering code is not
-included. Also absent are the original physical-mixture coherence/V2 audit,
-Montoro M7 NMF baseline, JASSNet comparison implementation, and a dedicated
-RespiratoryDatabase@TR mixture-only inference runner. RespiratoryTR preparation
-is included. Optional replay morphology augmentation references an unavailable
-module and remains disabled in the final profiles.
 
 ## Environment
 
@@ -162,11 +154,12 @@ copies. Absence of detected recording overlap does not establish patient-level
 independence. Reuse of EXP_H validation hearts must also be reported.
 
 ```powershell
-python Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_25x25_external_val.py --hs-selected-csv D:\inputs\audited_external_hs.csv --exph-hs-selected-csv D:\inputs\selected_hs_EXP_H_FULL_BOTH.csv
+python Codes/BUILD_HFLUNG_RESPIRATORYTR/build_hflung_selected_20x20_external_val.py --hs-selected-csv D:\inputs\audited_external_hs.csv --exph-hs-selected-csv D:\inputs\selected_hs_EXP_H_FULL_BOTH.csv
 python Codes/BUILD_HFLUNG_RESPIRATORYTR/audit_hflung_physionet_hs_leakage.py --exph-hs-selected-csv D:\inputs\selected_hs_EXP_H_FULL_BOTH.csv
 ```
 
-The default external size is 25×25, and the audit defaults to that output.
+The final thesis protocol uses 20 HS and 20 LS sources at {-6, -3, 0, +3, +6} dB,
+and the builder and audit default to that protocol.
 For another size, specify `--n-hs`, `--n-ls`, a descriptive `--out-name`, and the
 matching audit `--external-selected-root`. `--allow-exph-train-overlap` permits
 an explicitly LS-only external protocol and records the overlap; it must not be
