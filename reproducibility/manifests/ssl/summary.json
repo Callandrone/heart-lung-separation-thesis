@@ -1,0 +1,279 @@
+{
+  "all_dir": "/nas/home/pcallandrone/DeepLearning/dataset/processed/v1_real_ssl_pseudo_from_mixed_noaug/all",
+  "audit_stats": {
+    "abs_pseudo_h_over_l_snr_db": {
+      "max": 16.245347847342785,
+      "mean": 2.695897455923391,
+      "min": 0.0006609777978867092,
+      "p05": 0.158654486699586,
+      "p50": 2.0263890658188783,
+      "p95": 7.306182199034268,
+      "std": 2.388422968835053
+    },
+    "final_mix_corr": {
+      "max": 0.9993095946121042,
+      "mean": 0.981713280330466,
+      "min": 0.8680382798538905,
+      "p05": 0.9468144949883656,
+      "p50": 0.987297934169721,
+      "p95": 0.9982113770507294,
+      "std": 0.018519829184943708
+    },
+    "final_mix_nmse_db": {
+      "max": -6.0816626076485045,
+      "mean": -16.60007392761039,
+      "min": -28.600158006142422,
+      "p05": -24.468397872968527,
+      "p50": -15.978628772899045,
+      "p95": -9.848821494184083,
+      "std": 4.64404471845709
+    },
+    "gain_calibration_gamma": {
+      "max": 1.218346278245527,
+      "mean": 0.5438263032870785,
+      "min": 0.013971471271645415,
+      "p05": 0.22569149574672723,
+      "p50": 0.5384684538994687,
+      "p95": 0.8918261194765664,
+      "std": 0.2093837068822062
+    },
+    "pre_mix_corr": {
+      "max": -0.8680382808834043,
+      "mean": -0.9817132806780094,
+      "min": -0.9993095946094424,
+      "p05": -0.998211377087591,
+      "p50": -0.9872979343010788,
+      "p95": -0.9468144952569435,
+      "std": 0.01851982928471304
+    },
+    "pre_mix_nmse_db": {
+      "max": 37.16486896479073,
+      "mean": 9.71787851710308,
+      "min": 5.168921357643699,
+      "p05": 6.3915298689560816,
+      "p50": 8.970593910260686,
+      "p95": 14.60378691579779,
+      "std": 3.368463051206597
+    },
+    "pseudo_h_l_corr": {
+      "max": 0.9516373376123108,
+      "mean": 0.3595614454540719,
+      "min": 0.01174963948779058,
+      "p05": 0.09444175761664275,
+      "p50": 0.30707703069107106,
+      "p95": 0.781811896636696,
+      "std": 0.21265635785551507
+    },
+    "pseudo_h_over_l_snr_db": {
+      "max": 15.60817480715068,
+      "mean": -0.4372388264032422,
+      "min": -16.245347847342785,
+      "p05": -6.000854131110562,
+      "p50": -0.4314620188842122,
+      "p95": 5.535858841630716,
+      "std": 3.5754206891575646
+    },
+    "rms_h_pseudo": {
+      "max": 0.1422094919434219,
+      "mean": 0.0649969718403938,
+      "min": 0.0017111194718264786,
+      "p05": 0.02388527439673251,
+      "p50": 0.06567345795105706,
+      "p95": 0.10569502965500387,
+      "std": 0.024582628261931756
+    },
+    "rms_l_pseudo": {
+      "max": 0.20652494802191554,
+      "mean": 0.06960792817534417,
+      "min": 0.0022041027975886183,
+      "p05": 0.025485249324956133,
+      "p50": 0.06733709947470518,
+      "p95": 0.12596991720175796,
+      "std": 0.03126332964533448
+    },
+    "rms_m": {
+      "max": 0.24968862962533442,
+      "mean": 0.11336680967807869,
+      "min": 0.0031699284191347896,
+      "p05": 0.050000724888747995,
+      "p50": 0.1129042290696253,
+      "p95": 0.18063194991198908,
+      "std": 0.04127398428413013
+    }
+  },
+  "calibration": {
+    "apply_mixture_gain_calibration": true,
+    "apply_mixture_polarity_calibration": true,
+    "input_only": true,
+    "uses_ground_truth_h_l": false
+  },
+  "checkpoint_info": {
+    "allow_partial_load": false,
+    "checkpoint_config": {
+      "ATTN_WINDOW": 50,
+      "AUGMENT_SYNTH_REPLAY_TORABI_STYLE": false,
+      "CURRENT_SCOPE_AT_SAVE": "full",
+      "DECODER_R": 2,
+      "ENCODER_R": 3,
+      "FILTER_LOCAL_SNR": false,
+      "FINETUNE_LR": 5e-06,
+      "FINETUNE_MODE": "full",
+      "FULL_FINETUNE_LR": 5e-06,
+      "LAMBDA_L1": 0.0,
+      "LAMBDA_MIX": 0.0,
+      "LAMBDA_MIX_POLARITY": 0.0,
+      "LAMBDA_POLARITY": 0.1,
+      "LAMBDA_RMS": 1.0,
+      "LOCAL_SNR_ANALYSIS_CSV": "",
+      "LOCAL_SNR_THRESHOLD_DB": 15.0,
+      "LOSS_WEIGHT_H": 1.0,
+      "LOSS_WEIGHT_L": 1.0,
+      "MASK_SCALE": "ReLU_unbounded",
+      "MIXED_CURRICULUM": [
+        [
+          0,
+          0.3
+        ],
+        [
+          3,
+          0.5
+        ],
+        [
+          7,
+          0.7
+        ]
+      ],
+      "MIXED_STEPS_PER_EPOCH": null,
+      "MIXED_SYNTH_MAX_SEGMENTS": 30000,
+      "MIXED_TRAINING": true,
+      "MIXED_USE_CURRICULUM": true,
+      "MIXED_WEIGHT_SYNTH": 0.05,
+      "MIXED_WEIGHT_V2": 1.0,
+      "MODEL_SEED": 42,
+      "N_FILTERS": 128,
+      "N_FOLDS": 1,
+      "N_LATENT": 64,
+      "PRETRAIN_CKPT": "/nas/home/pcallandrone/DeepLearning/outputs/checkpoints/EXP_H_FULL_BOTH/scratch_fold1_best.pt",
+      "REMOVED_TRAIN_ITEMS": 0,
+      "REMOVED_TRAIN_ORIGINAL_WINDOWS": 0,
+      "REMOVED_VAL_ITEMS": 0,
+      "REMOVED_VAL_ORIGINAL_WINDOWS": 0,
+      "REQUIRE_SYNTH_TRAIN_SPLIT": true,
+      "SEPARATOR_FINETUNE_LR": 5e-06,
+      "SEP_BLOCKS_PER_STACK": 4,
+      "SEP_N_STACKS": 1,
+      "SEP_TCN_BOTTLENECK": 64,
+      "SOURCE_DISJOINT_SPLIT_CSV": "/nas/home/pcallandrone/DeepLearning/dataset/processed/torabi_full_40x40_10x10_no_unused_fold2/source_disjoint_split_smoke.csv",
+      "SPLIT_SEED": 42,
+      "SYNTH_REPLAY_FOLD_NO": 1,
+      "SYNTH_REPLAY_SPLIT": "train",
+      "SYNTH_SOURCE_DISJOINT_SPLIT_CSV": "/nas/home/pcallandrone/DeepLearning/dataset/processed/experiment_H_full_both/source_disjoint_split_smoke.csv",
+      "SYNTH_SUPERVISED_DIR": "/nas/home/pcallandrone/DeepLearning/dataset/processed/experiment_H_full_both",
+      "TARGET_GAIN_INFO": {
+        "alpha_h": 1.0,
+        "alpha_l": 1.0,
+        "fit_corr": NaN,
+        "fit_nmse_db": NaN,
+        "target_gain_mode": "none"
+      },
+      "TORABI_STYLE_HS_HF_FLOOR_PROB": 0.0,
+      "TORABI_STYLE_HS_HF_FLOOR_SNR_DB": [
+        38.0,
+        48.0
+      ],
+      "TORABI_STYLE_LS_HIGH_CUT_DB": [
+        -2.0,
+        -6.0
+      ],
+      "TORABI_STYLE_LS_LOW_BOOST_DB": [
+        0.0,
+        1.5
+      ],
+      "TORABI_STYLE_LS_MID_CUT_DB": [
+        0.0,
+        -2.0
+      ],
+      "TORABI_STYLE_PEAK_VALUE": null,
+      "TORABI_STYLE_PRESERVE_PEAK": null,
+      "TORABI_STYLE_REPLAY_PROB": 0.5,
+      "TORABI_STYLE_SHARED_HIGH_CUT_DB": [
+        0.0,
+        -2.0
+      ],
+      "TORABI_STYLE_SOURCE_GAIN_JITTER_DB": 1.0,
+      "TRAIN_SEGMENTS_AFTER_FILTER": 216000,
+      "TRAIN_SEGMENTS_BEFORE_FILTER": 216000,
+      "USE_SOURCE_DISJOINT_SPLIT": true,
+      "VAL_SEGMENTS_AFTER_FILTER": 13500,
+      "VAL_SEGMENTS_BEFORE_FILTER": 13500
+    },
+    "checkpoint_epoch": 9,
+    "checkpoint_fold": 0,
+    "checkpoint_stage": "finetune",
+    "checkpoint_val_loss": -4.080115546582717,
+    "checkpoint_val_metrics": {
+      "dynamic_source_weights": 0.0,
+      "lambda_l1": 0.0,
+      "lambda_mix": 0.0,
+      "lambda_mix_polarity": 0.0,
+      "lambda_polarity": 0.10000000000000014,
+      "lambda_rms": 1.0,
+      "loss_l1": 0.06563188188590145,
+      "loss_l1_h": 0.05061989110316287,
+      "loss_l1_l": 0.08064387265539848,
+      "loss_mix": 0.0,
+      "loss_mix_polarity": 0.0,
+      "loss_polarity": 0.8128586216560473,
+      "loss_polarity_h": 0.8178462843759365,
+      "loss_polarity_l": 0.8078709597836173,
+      "loss_rms": 0.001714958571795798,
+      "loss_rms_h": 0.0014087328084129885,
+      "loss_rms_l": 0.0020211843255922746,
+      "loss_sisdr": -4.163116380678251,
+      "loss_sisdr_h": -4.5052127702541265,
+      "loss_sisdr_l": -3.8210199907845794,
+      "loss_total": -4.080115546582717,
+      "loss_weight_h": 1.0,
+      "loss_weight_l": 1.0,
+      "si_sdr_h_dB": 4.5052127702541265,
+      "si_sdr_l_dB": 3.8210199907845794,
+      "snr_sample_weight_mean": 1.0,
+      "snr_sample_weights": 0.0,
+      "weighted_loss_l1": 0.0,
+      "weighted_loss_mix": 0.0,
+      "weighted_loss_mix_polarity": 0.0,
+      "weighted_loss_polarity": 0.08128586390289651,
+      "weighted_loss_rms": 0.001714958571795798
+    },
+    "missing_keys": [],
+    "teacher_ckpt": "/nas/home/pcallandrone/DeepLearning/outputs/checkpoints/EXP_H_FULL_TO_TORABI_FOLD2_MIXED_REPLAY005_NOAUG/finetune_fold1_best.pt",
+    "unexpected_keys": []
+  },
+  "confidence_rate": 0.9225589225589226,
+  "confident_dir": "/nas/home/pcallandrone/DeepLearning/dataset/processed/v1_real_ssl_pseudo_from_mixed_noaug/confident",
+  "dataset_name": "v1_real_ssl_pseudo_from_mixed_noaug",
+  "device": "cuda",
+  "m1_dir": "/nas/home/pcallandrone/DeepLearning/dataset/processed/M1_segmented_only",
+  "manifest_pseudo_all": "/nas/home/pcallandrone/DeepLearning/dataset/processed/v1_real_ssl_pseudo_from_mixed_noaug/manifest_pseudo_all.csv",
+  "manifest_pseudo_confident": "/nas/home/pcallandrone/DeepLearning/dataset/processed/v1_real_ssl_pseudo_from_mixed_noaug/manifest_pseudo_confident.csv",
+  "manifest_pseudo_rejected": "/nas/home/pcallandrone/DeepLearning/dataset/processed/v1_real_ssl_pseudo_from_mixed_noaug/manifest_pseudo_rejected.csv",
+  "methodological_role": "SSL teacher pseudo-label dataset generated from V1 real mixture-only segments",
+  "model_code_dir": "/nas/home/pcallandrone/DeepLearning/codes/MIXED_TUNING",
+  "n_confident_segments": 2740,
+  "n_input_mixtures": 110,
+  "n_input_segments": 2970,
+  "n_rejected_segments": 230,
+  "next_step": "Inspect manifest_pseudo_confident.csv and run pseudo-label quality audit/listening before SSL student fine-tuning.",
+  "out_dir": "/nas/home/pcallandrone/DeepLearning/dataset/processed/v1_real_ssl_pseudo_from_mixed_noaug",
+  "teacher_ckpt": "/nas/home/pcallandrone/DeepLearning/outputs/checkpoints/EXP_H_FULL_TO_TORABI_FOLD2_MIXED_REPLAY005_NOAUG/finetune_fold1_best.pt",
+  "teacher_experiment": "EXP_H_FULL_TO_TORABI_FOLD2_MIXED_REPLAY005_NOAUG",
+  "thresholds": {
+    "max_abs_h_l_corr": 0.98,
+    "max_abs_pseudo_snr_db": 25.0,
+    "max_gain_gamma": 10.0,
+    "max_mix_nmse_db": -10.0,
+    "min_gain_gamma": 0.1,
+    "min_mix_corr": 0.95,
+    "min_source_rms": 0.0001
+  }
+}

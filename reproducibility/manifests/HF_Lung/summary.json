@@ -1,0 +1,21 @@
+{
+  "base_triplets": 2000,
+  "expected_base_triplets": 2000,
+  "expected_segments": 54000,
+  "hs_sources": 20,
+  "ls_sources": 20,
+  "min_full_additivity_snr_db": 121.8880955525486,
+  "min_segment_additivity_snr_db": 109.8817092577807,
+  "mix_root": "/nas/home/pcallandrone/DeepLearning/dataset/MIX_HFLUNG_SELECTED_20X20_EXTERNAL_VAL_HS_UNSEEN_4K",
+  "processed_dir": "/nas/home/pcallandrone/DeepLearning/dataset/processed/hflung_selected_20x20_external_val_hs_unseen",
+  "segments": 54000,
+  "selected_root": "/nas/home/pcallandrone/DeepLearning/dataset/HFLUNG_SELECTED_20X20_EXTERNAL_VAL_HS_UNSEEN_SELECTED",
+  "snrs": [
+    -6.0,
+    -3.0,
+    0.0,
+    3.0,
+    6.0
+  ],
+  "split_csv": "/nas/home/pcallandrone/DeepLearning/dataset/processed/hflung_selected_20x20_external_val_hs_unseen/source_disjoint_split_smoke.csv"
+}

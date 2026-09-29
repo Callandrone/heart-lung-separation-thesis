@@ -1,0 +1,121 @@
+
+# ======================
+# IntelliJ / PyCharm IDE
+# ======================
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea/deployment.xml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries
+.idea/shelf
+.idea/httpRequests
+
+**/deployment.xml
+# ======================
+# Python
+# ======================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+.env/
+.venv/
+ENV/
+
+# Distribution / build
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# ======================
+# Deep Learning / ML
+# ======================
+# Models and checkpoints
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.pb
+*.onnx
+checkpoints/
+runs/
+outputs/
+saved_models/
+
+# Datasets (often too large for Git)
+data/
+dataset/
+datasets/
+*.csv
+*.parquet
+*.feather
+*.hdf5
+*.tfrecord
+
+# Logs and metrics
+logs/
+*.log
+wandb/
+mlruns/
+lightning_logs/
+tensorboard/
+
+# ======================
+# Jupyter Notebook
+# ======================
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ======================
+# Operating system
+# ======================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Linux
+*~
+
+# ======================
+# Environment variables
+# ======================
+.env
+.env.local
+.env.*.local
+*.env
+
+# ======================
+# Cache e temp
+# ======================
+.cache/
+*.tmp
+*.temp
+tmp/
+temp/
+*.zip
+
+# Small, curated reproducibility manifests can be versioned here.
+!reproducibility/manifests/
+!reproducibility/manifests/**/*.csv
+
+# ======================
+# Third-party datasets
+# ======================
+HLS_CMDS_ALIGNED/

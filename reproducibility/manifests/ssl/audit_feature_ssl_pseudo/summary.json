@@ -1,0 +1,39 @@
+{
+  "pseudo_root": "/nas/home/pcallandrone/DeepLearning/dataset/processed/v1_real_ssl_pseudo_from_mixed_noaug",
+  "out_dir": "/nas/home/pcallandrone/DeepLearning/dataset/processed/v1_real_ssl_pseudo_from_mixed_noaug/audit_feature_ssl_pseudo",
+  "reference_features_csv": "/nas/home/pcallandrone/DeepLearning/outputs/domain_gap_EXP_H_vs_TORABI_FOLD2/segment_level_features_sampled.csv",
+  "n_manifest_confident": 2740,
+  "n_pseudo_feature_rows": 10960,
+  "n_reference_rows": 96000,
+  "n_combined_rows": 106960,
+  "n_unique_pseudo_mixtures": 109,
+  "n_examples_exported": 15,
+  "distance_winner_by_source_mode": [
+    {
+      "source_type": "HS",
+      "mode": "raw",
+      "closest_reference_domain": "TORABI_FOLD2",
+      "closest_mean_abs_robust_z_gap": 0.41965239341237753
+    },
+    {
+      "source_type": "HS",
+      "mode": "rms",
+      "closest_reference_domain": "TORABI_FOLD2",
+      "closest_mean_abs_robust_z_gap": 0.5067057944278992
+    },
+    {
+      "source_type": "LS",
+      "mode": "raw",
+      "closest_reference_domain": "TORABI_FOLD2",
+      "closest_mean_abs_robust_z_gap": 0.6633968839830628
+    },
+    {
+      "source_type": "LS",
+      "mode": "rms",
+      "closest_reference_domain": "TORABI_FOLD2",
+      "closest_mean_abs_robust_z_gap": 0.7780661566150198
+    }
+  ],
+  "does_use_real_v1_h_l_ground_truth": false,
+  "methodological_role": "Audit pseudo-label plausibility before conservative SSL training."
+}
